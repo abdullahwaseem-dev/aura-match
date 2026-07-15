@@ -1,0 +1,29 @@
+# Render Blueprint — deploys server/ as a free-tier Node.js web service.
+# Docs: https://render.com/docs/blueprint-spec
+#
+# Nothing secret lives in this file. GROQ_API_KEY has `sync: false`, which
+# means Render prompts for it in the dashboard during setup instead of
+# reading it from here — see FREE_LLM_MIGRATION.md / the deploy guide for
+# exactly where that value goes.
+
+services:
+  - type: web
+    name: auramatch-backend
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_DEEP_MODEL
+        value: llama-3.3-70b-versatile
+      - key: GROQ_FAST_MODEL
+        value: llama-3.1-8b-instant
+      - key: NODE_VERSION
+        value: 20.11.0
+      # PORT is intentionally not set here — Render injects it automatically,
+      # and server/src/index.js already reads process.env.PORT.

@@ -1,0 +1,25 @@
+{
+  "name": "aura-match-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Backend for AURA MATCH — resume ATS pipeline and AI Hiring Manager scoring via Groq.",
+  "main": "src/index.js",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.111.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "groq-sdk": "^1.3.0",
+    "mammoth": "^1.12.0",
+    "multer": "^2.2.0",
+    "pdf-parse": "^2.4.5"
+  }
+}

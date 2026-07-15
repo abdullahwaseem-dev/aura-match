@@ -1,0 +1,17 @@
+# Secrets — never commit these, on any platform, ever.
+.env
+.env.local
+*.env
+!.env.example
+
+# Node (server/)
+node_modules/
+npm-debug.log*
+
+# OS cruft
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
