@@ -64,20 +64,32 @@ class _AuroraButtonState extends State<AuroraButton> {
           onTapUp: (_) => setState(() => _pressed = false),
           onTap: disabled ? null : widget.onPressed,
           child: AnimatedContainer(
+            // A non-overshooting curve here is required: Curves.elasticOut
+            // pushes its animated t past 1.0 during the bounce-settle, and
+            // when boxShadow lists change length (see _decoration) Flutter's
+            // BoxShadow.lerpList scales the extra shadow by (1 - t), which
+            // goes negative once t > 1 — that produces a negative blurRadius
+            // and trips dart:ui's Shadow assertion on every affected frame.
+            // The spring/bounce feel is preserved below on the transform,
+            // which has no such domain constraint.
             duration: AuroraMotion.micro,
-            curve: _pressed ? Curves.easeOut : AuroraMotion.spring,
-            transform: _pressed
-                ? (Matrix4.identity()..scaleByDouble(0.97, 0.97, 0.97, 1))
-                : (lift
-                    ? (Matrix4.identity()..translateByDouble(0.0, -3.0, 0.0, 1.0))
-                    : Matrix4.identity()),
-            transformAlignment: Alignment.center,
+            curve: AuroraMotion.auroraEase,
             height: 52,
             width: widget.expand ? double.infinity : null,
             padding: const EdgeInsets.symmetric(horizontal: AuroraSpacing.lg),
             alignment: Alignment.center,
             decoration: _decoration(lift),
-            child: content,
+            child: AnimatedContainer(
+              duration: AuroraMotion.micro,
+              curve: _pressed ? Curves.easeOut : AuroraMotion.spring,
+              transform: _pressed
+                  ? (Matrix4.identity()..scaleByDouble(0.97, 0.97, 0.97, 1))
+                  : (lift
+                      ? (Matrix4.identity()..translateByDouble(0.0, -3.0, 0.0, 1.0))
+                      : Matrix4.identity()),
+              transformAlignment: Alignment.center,
+              child: content,
+            ),
           ),
         ),
       ),

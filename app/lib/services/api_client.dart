@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import '../models/resume_models.dart';
+import '../models/job_models.dart';
 
 class ApiException implements Exception {
   ApiException(this.message);
@@ -78,6 +79,62 @@ class ApiClient {
   Future<HiringManagerScorecard> scoreResume({required String resumeText, required String persona}) async {
     final body = await _post('/api/hiring-manager/score', {'resumeText': resumeText, 'persona': persona});
     return HiringManagerScorecard.fromJson(body);
+  }
+
+  Future<List<JobMatch>> fetchJobFeed({
+    required String deviceId,
+    required String resumeText,
+    required String targetRole,
+  }) async {
+    final body = await _post(
+      '/api/jobs/feed',
+      {'deviceId': deviceId, 'resumeText': resumeText, 'targetRole': targetRole},
+    );
+    return (body['matches'] as List).map((e) => JobMatch.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<(ApplicationDraft draft, TrackedApplication application)> draftApplication({
+    required String jobId,
+    required String deviceId,
+    required String resumeText,
+    required String targetRole,
+  }) async {
+    final body = await _post(
+      '/api/jobs/$jobId/draft',
+      {'deviceId': deviceId, 'resumeText': resumeText, 'targetRole': targetRole},
+    );
+    return (
+      ApplicationDraft.fromJson(body['draft'] as Map<String, dynamic>),
+      TrackedApplication.fromJson(body['application'] as Map<String, dynamic>),
+    );
+  }
+
+  Future<List<TrackedApplication>> listApplications({required String deviceId}) async {
+    final uri = Uri.parse('$baseUrl/api/applications').replace(queryParameters: {'deviceId': deviceId});
+    final res = await http.get(uri).timeout(const Duration(seconds: 15));
+    final body = _decode(res);
+    return (body['applications'] as List).map((e) => TrackedApplication.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<TrackedApplication> saveJob({required String deviceId, required String jobId}) async {
+    final body = await _post('/api/applications', {'deviceId': deviceId, 'jobId': jobId});
+    return TrackedApplication.fromJson(body['application'] as Map<String, dynamic>);
+  }
+
+  Future<TrackedApplication> updateApplicationStatus({
+    required String applicationId,
+    required String deviceId,
+    required ApplicationStatus status,
+  }) async {
+    final res = await http
+        .patch(
+          Uri.parse('$baseUrl/api/applications/$applicationId'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({'deviceId': deviceId, 'status': status.name}),
+        )
+        .timeout(const Duration(seconds: 15));
+    final body = _decode(res);
+    return TrackedApplication.fromJson(body['application'] as Map<String, dynamic>);
   }
 
   Future<Map<String, dynamic>> _post(String path, Map<String, dynamic> payload) async {

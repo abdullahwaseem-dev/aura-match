@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import '../theme/aurora.dart';
 
@@ -59,19 +60,22 @@ class _RingPainter extends CustomPainter {
     canvas.drawCircle(center, radius, trackPaint);
 
     if (percent <= 0) return;
-    final sweep = 2 * 3.14159265 * percent;
+    // SweepGradient's startAngle/endAngle must satisfy 0 <= startAngle < endAngle
+    // <= 2*pi (dart:ui asserts this) — the 12-o'clock start position comes from
+    // the GradientRotation transform below, not from a negative startAngle.
+    final sweep = (2 * math.pi * percent).clamp(0.0, 2 * math.pi);
     final rect = Rect.fromCircle(center: center, radius: radius);
     final gradientPaint = Paint()
       ..shader = SweepGradient(
-        startAngle: -1.5707963,
-        endAngle: -1.5707963 + sweep,
+        startAngle: 0,
+        endAngle: sweep,
         colors: const [AuroraColors.cyan, AuroraColors.violet],
-        transform: const GradientRotation(-1.5707963),
+        transform: const GradientRotation(-math.pi / 2),
       ).createShader(rect)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 8
       ..strokeCap = StrokeCap.round;
-    canvas.drawArc(rect, -1.5707963, sweep, false, gradientPaint);
+    canvas.drawArc(rect, -math.pi / 2, sweep, false, gradientPaint);
   }
 
   @override

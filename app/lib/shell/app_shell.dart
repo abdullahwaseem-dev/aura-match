@@ -3,7 +3,7 @@ import '../theme/aurora.dart';
 import '../widgets/aura_orb.dart';
 import '../screens/home/aura_home_screen.dart';
 import '../screens/resume/resume_flow_screen.dart';
-import '../screens/jobs/jobs_placeholder_screen.dart';
+import '../screens/jobs/jobs_flow_screen.dart';
 import '../screens/interview/interview_placeholder_screen.dart';
 import '../screens/profile/profile_placeholder_screen.dart';
 
@@ -31,7 +31,7 @@ const _items = [
 const _screens = [
   ResumeFlowScreen(),
   AuraHomeScreen(),
-  JobsPlaceholderScreen(),
+  JobsFlowScreen(),
   InterviewPlaceholderScreen(),
   ProfilePlaceholderScreen(),
 ];
