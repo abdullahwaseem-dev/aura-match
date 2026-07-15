@@ -2,9 +2,6 @@
 # of no traffic. This MUST run somewhere other than Render itself — a
 # sleeping instance can't wake itself up, so GitHub's servers do the
 # knocking instead.
-#
-# Fill in RENDER_URL below with the real address once you've deployed once
-# (Step 5 of the deploy guide) — it doesn't exist until after first deploy.
 
 name: Keep Render Backend Awake
 
@@ -14,7 +11,7 @@ on:
   workflow_dispatch: # lets you trigger it manually from the Actions tab to test it
 
 env:
-  RENDER_URL: https://auramatch-backend.onrender.com/api/health
+  RENDER_URL: https://aura-match.onrender.com/api/health
 
 jobs:
   ping:

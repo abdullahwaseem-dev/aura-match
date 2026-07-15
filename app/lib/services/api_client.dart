@@ -11,13 +11,19 @@ class ApiException implements Exception {
   String toString() => message;
 }
 
-/// Talks to the local AURA MATCH backend (see /server).
+/// Talks to the AURA MATCH backend (see /server).
+///
+/// Defaults to the local dev server. Point at the deployed backend with:
+///   flutter run --dart-define=API_BASE_URL=https://aura-match.onrender.com
 class ApiClient {
   ApiClient({String? baseUrl}) : baseUrl = baseUrl ?? _defaultBaseUrl();
 
   final String baseUrl;
 
+  static const _envBaseUrl = String.fromEnvironment('API_BASE_URL');
+
   static String _defaultBaseUrl() {
+    if (_envBaseUrl.isNotEmpty) return _envBaseUrl;
     if (kIsWeb) return 'http://localhost:8787';
     try {
       if (Platform.isAndroid) return 'http://10.0.2.2:8787';
