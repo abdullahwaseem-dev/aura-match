@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 import '../models/resume_models.dart';
 import '../models/job_models.dart';
 import '../models/interview_models.dart';
@@ -33,6 +34,15 @@ class ApiClient {
       // Platform is unavailable on some targets (web already handled above).
     }
     return 'http://localhost:8787';
+  }
+
+  // Jobs/Applications routes require a signed-in user — the server verifies
+  // this token itself (never trusts a client-supplied id) and uses it to
+  // scope every query via RLS. Resume/Hiring-Manager/Interview routes are
+  // stateless and don't need it.
+  Map<String, String> get _authHeaders {
+    final token = sb.Supabase.instance.client.auth.currentSession?.accessToken;
+    return {if (token != null) 'Authorization': 'Bearer $token'};
   }
 
   Future<bool> checkHealth() async {
@@ -82,27 +92,24 @@ class ApiClient {
     return HiringManagerScorecard.fromJson(body);
   }
 
-  Future<List<JobMatch>> fetchJobFeed({
-    required String deviceId,
-    required String resumeText,
-    required String targetRole,
-  }) async {
+  Future<List<JobMatch>> fetchJobFeed({required String resumeText, required String targetRole}) async {
     final body = await _post(
       '/api/jobs/feed',
-      {'deviceId': deviceId, 'resumeText': resumeText, 'targetRole': targetRole},
+      {'resumeText': resumeText, 'targetRole': targetRole},
+      headers: _authHeaders,
     );
     return (body['matches'] as List).map((e) => JobMatch.fromJson(e as Map<String, dynamic>)).toList();
   }
 
   Future<(ApplicationDraft draft, TrackedApplication application)> draftApplication({
     required String jobId,
-    required String deviceId,
     required String resumeText,
     required String targetRole,
   }) async {
     final body = await _post(
       '/api/jobs/$jobId/draft',
-      {'deviceId': deviceId, 'resumeText': resumeText, 'targetRole': targetRole},
+      {'resumeText': resumeText, 'targetRole': targetRole},
+      headers: _authHeaders,
     );
     return (
       ApplicationDraft.fromJson(body),
@@ -110,28 +117,28 @@ class ApiClient {
     );
   }
 
-  Future<List<TrackedApplication>> listApplications({required String deviceId}) async {
-    final uri = Uri.parse('$baseUrl/api/applications').replace(queryParameters: {'deviceId': deviceId});
-    final res = await http.get(uri).timeout(const Duration(seconds: 15));
+  Future<List<TrackedApplication>> listApplications() async {
+    final res = await http
+        .get(Uri.parse('$baseUrl/api/applications'), headers: _authHeaders)
+        .timeout(const Duration(seconds: 15));
     final body = _decode(res);
     return (body['applications'] as List).map((e) => TrackedApplication.fromJson(e as Map<String, dynamic>)).toList();
   }
 
-  Future<TrackedApplication> saveJob({required String deviceId, required String jobId}) async {
-    final body = await _post('/api/applications', {'deviceId': deviceId, 'jobId': jobId});
+  Future<TrackedApplication> saveJob({required String jobId}) async {
+    final body = await _post('/api/applications', {'jobId': jobId}, headers: _authHeaders);
     return TrackedApplication.fromJson(body['application'] as Map<String, dynamic>);
   }
 
   Future<TrackedApplication> updateApplicationStatus({
     required String applicationId,
-    required String deviceId,
     required ApplicationStatus status,
   }) async {
     final res = await http
         .patch(
           Uri.parse('$baseUrl/api/applications/$applicationId'),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode({'deviceId': deviceId, 'status': status.name}),
+          headers: {'Content-Type': 'application/json', ..._authHeaders},
+          body: jsonEncode({'status': status.name}),
         )
         .timeout(const Duration(seconds: 15));
     final body = _decode(res);
@@ -182,11 +189,15 @@ class ApiClient {
     return InterviewResult.fromJson(body);
   }
 
-  Future<Map<String, dynamic>> _post(String path, Map<String, dynamic> payload) async {
+  Future<Map<String, dynamic>> _post(
+    String path,
+    Map<String, dynamic> payload, {
+    Map<String, String> headers = const {},
+  }) async {
     final res = await http
         .post(
           Uri.parse('$baseUrl$path'),
-          headers: {'Content-Type': 'application/json'},
+          headers: {'Content-Type': 'application/json', ...headers},
           body: jsonEncode(payload),
         )
         .timeout(const Duration(seconds: 90));

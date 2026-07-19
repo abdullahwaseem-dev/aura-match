@@ -38,13 +38,16 @@ class _AuroraButtonState extends State<AuroraButton> {
           Icon(widget.icon, size: 18, color: _fg()),
           const SizedBox(width: AuroraSpacing.sm),
         ],
-        Text(
-          widget.label,
-          style: TextStyle(
-            fontFamily: 'PlusJakartaSans',
-            fontWeight: FontWeight.w700,
-            fontSize: 14.5,
-            color: _fg(),
+        Flexible(
+          child: Text(
+            widget.label,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontFamily: 'PlusJakartaSans',
+              fontWeight: FontWeight.w700,
+              fontSize: 14.5,
+              color: _fg(),
+            ),
           ),
         ),
       ],

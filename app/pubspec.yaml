@@ -37,15 +37,16 @@ dependencies:
   http: ^1.2.2
   provider: ^6.1.2
   file_picker: ^8.1.4
-  shared_preferences: ^2.3.3
-  uuid: ^4.5.1
   url_launcher: ^6.3.1
   pdf: ^3.11.1
   printing: ^5.13.3
+  supabase_flutter: ^2.8.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  # Test-only: mocking supabase_flutter's session-persistence channel.
+  shared_preferences: ^2.3.3
 
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is

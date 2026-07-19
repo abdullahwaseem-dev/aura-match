@@ -1,11 +1,10 @@
 import 'package:flutter/foundation.dart';
 import '../models/job_models.dart';
 import '../services/api_client.dart';
-import '../services/device_identity.dart';
 
 /// Drives the Jobs tab: the AI-scored Match Feed and the Application
-/// Tracker. Scoped to this install via [DeviceIdentity] — there's no auth
-/// system yet, so "my applications" means "this device's applications".
+/// Tracker. Scoped to the signed-in user — the server derives identity from
+/// the caller's verified auth token, not anything sent from the client.
 class JobsState extends ChangeNotifier {
   JobsState(this._api);
 
@@ -24,8 +23,7 @@ class JobsState extends ChangeNotifier {
     feedError = null;
     notifyListeners();
     try {
-      final deviceId = await DeviceIdentity.get();
-      feed = await _api.fetchJobFeed(deviceId: deviceId, resumeText: resumeText, targetRole: targetRole);
+      feed = await _api.fetchJobFeed(resumeText: resumeText, targetRole: targetRole);
     } catch (e) {
       feedError = e.toString();
     }
@@ -38,8 +36,7 @@ class JobsState extends ChangeNotifier {
     applicationsError = null;
     notifyListeners();
     try {
-      final deviceId = await DeviceIdentity.get();
-      applications = await _api.listApplications(deviceId: deviceId);
+      applications = await _api.listApplications();
     } catch (e) {
       applicationsError = e.toString();
     }
@@ -48,8 +45,7 @@ class JobsState extends ChangeNotifier {
   }
 
   Future<void> saveJob(String jobId) async {
-    final deviceId = await DeviceIdentity.get();
-    final application = await _api.saveJob(deviceId: deviceId, jobId: jobId);
+    final application = await _api.saveJob(jobId: jobId);
     _upsertApplication(application);
     notifyListeners();
   }
@@ -59,18 +55,25 @@ class JobsState extends ChangeNotifier {
     required String resumeText,
     required String targetRole,
   }) async {
-    final deviceId = await DeviceIdentity.get();
     final (draft, application) =
-        await _api.draftApplication(jobId: jobId, deviceId: deviceId, resumeText: resumeText, targetRole: targetRole);
+        await _api.draftApplication(jobId: jobId, resumeText: resumeText, targetRole: targetRole);
     _upsertApplication(application);
     notifyListeners();
     return (draft, application);
   }
 
   Future<void> updateStatus(String applicationId, ApplicationStatus status) async {
-    final deviceId = await DeviceIdentity.get();
-    final application = await _api.updateApplicationStatus(applicationId: applicationId, deviceId: deviceId, status: status);
+    final application = await _api.updateApplicationStatus(applicationId: applicationId, status: status);
     _upsertApplication(application);
+    notifyListeners();
+  }
+
+  /// Called on sign-out so the next signed-in user doesn't see stale data.
+  void clear() {
+    feed = [];
+    applications = [];
+    feedError = null;
+    applicationsError = null;
     notifyListeners();
   }
 

@@ -6,7 +6,7 @@ import '../screens/home/aura_home_screen.dart';
 import '../screens/resume/resume_flow_screen.dart';
 import '../screens/jobs/jobs_flow_screen.dart';
 import '../screens/interview/interview_screen.dart';
-import '../screens/profile/profile_placeholder_screen.dart';
+import '../screens/profile/account_screen.dart';
 import '../state/navigation_state.dart';
 
 class AppShell extends StatelessWidget {
@@ -17,7 +17,7 @@ class AppShell extends StatelessWidget {
     AuraHomeScreen(),
     JobsFlowScreen(),
     InterviewScreen(),
-    ProfilePlaceholderScreen(),
+    AccountScreen(),
   ];
 
   @override

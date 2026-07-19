@@ -2,13 +2,18 @@ import { Router } from "express";
 import { getSupabase, isConfigured as isSupabaseConfigured } from "../lib/supabaseClient.js";
 import { fetchArbeitnowJobs, truncateSafely } from "../lib/arbeitnow.js";
 import { analyzeResume, isConfigured as isGroqConfigured } from "../groqClient.js";
+import { requireAuth } from "../middleware/requireAuth.js";
 
 const router = Router();
+router.use(requireAuth);
 
 const REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 hours
 const CANDIDATE_POOL_SIZE = 40;
 
-async function refreshJobsIfStale(supabase) {
+async function refreshJobsIfStale() {
+  // The shared jobs cache isn't user data — always use the anon client
+  // (its RLS policies already allow anon read/write) regardless of caller.
+  const supabase = getSupabase();
   const { data: newest } = await supabase
     .from("jobs")
     .select("fetched_at")
@@ -43,16 +48,15 @@ router.post("/feed", async (req, res) => {
   if (!isSupabaseConfigured()) return res.status(503).json({ error: "Supabase is not configured on the server." });
   if (!isGroqConfigured()) return res.status(503).json({ error: "GROQ_API_KEY is not set on the server." });
 
-  const { deviceId, resumeText, targetRole } = req.body ?? {};
-  if (!deviceId || !resumeText || !targetRole) {
-    return res.status(400).json({ error: "deviceId, resumeText, and targetRole are required." });
+  const { resumeText, targetRole } = req.body ?? {};
+  if (!resumeText || !targetRole) {
+    return res.status(400).json({ error: "resumeText and targetRole are required." });
   }
 
-  const supabase = getSupabase();
   try {
-    await refreshJobsIfStale(supabase);
+    await refreshJobsIfStale();
 
-    const { data: pool, error: poolErr } = await supabase
+    const { data: pool, error: poolErr } = await getSupabase()
       .from("jobs")
       .select("id, title, company_name, location, remote, description, tags")
       .order("fetched_at", { ascending: false })
@@ -82,7 +86,7 @@ router.post("/feed", async (req, res) => {
     for (const m of matches) {
       if (!byId.has(m.id)) continue;
       rowsById.set(m.id, {
-        device_id: deviceId,
+        user_id: req.userId,
         job_id: m.id,
         match_score: Math.max(0, Math.min(100, Math.round(m.matchScore ?? 0))),
         match_reasons: Array.isArray(m.reasons) ? m.reasons.slice(0, 3) : [],
@@ -92,16 +96,15 @@ router.post("/feed", async (req, res) => {
     const rows = [...rowsById.values()];
 
     if (rows.length > 0) {
-      const { error: upsertErr } = await supabase
+      const { error: upsertErr } = await req.supabase
         .from("job_matches")
-        .upsert(rows, { onConflict: "device_id,job_id" });
+        .upsert(rows, { onConflict: "user_id,job_id" });
       if (upsertErr) throw new Error(upsertErr.message);
     }
 
-    const { data: joined, error: joinErr } = await supabase
+    const { data: joined, error: joinErr } = await req.supabase
       .from("job_matches")
       .select("match_score, match_reasons, job:jobs(*)")
-      .eq("device_id", deviceId)
       .order("match_score", { ascending: false });
     if (joinErr) throw new Error(joinErr.message);
 
@@ -170,14 +173,13 @@ router.post("/:jobId/draft", async (req, res) => {
   if (!isGroqConfigured()) return res.status(503).json({ error: "GROQ_API_KEY is not set on the server." });
 
   const { jobId } = req.params;
-  const { deviceId, resumeText, targetRole } = req.body ?? {};
-  if (!deviceId || !resumeText) {
-    return res.status(400).json({ error: "deviceId and resumeText are required." });
+  const { resumeText, targetRole } = req.body ?? {};
+  if (!resumeText) {
+    return res.status(400).json({ error: "resumeText is required." });
   }
 
-  const supabase = getSupabase();
   try {
-    const { data: job, error: jobErr } = await supabase.from("jobs").select("*").eq("id", jobId).maybeSingle();
+    const { data: job, error: jobErr } = await getSupabase().from("jobs").select("*").eq("id", jobId).maybeSingle();
     if (jobErr) throw new Error(jobErr.message);
     if (!job) return res.status(404).json({ error: "Job not found." });
 
@@ -198,17 +200,17 @@ router.post("/:jobId/draft", async (req, res) => {
     };
     const coverNote = draft.coverNote || "";
 
-    const { data: application, error: upsertErr } = await supabase
+    const { data: application, error: upsertErr } = await req.supabase
       .from("applications")
       .upsert(
         {
-          device_id: deviceId,
+          user_id: req.userId,
           job_id: jobId,
           status: "ready",
           tailored_resume: resumeToText(resume),
           cover_note: coverNote,
         },
-        { onConflict: "device_id,job_id" }
+        { onConflict: "user_id,job_id" }
       )
       .select("*, job:jobs(*)")
       .single();
