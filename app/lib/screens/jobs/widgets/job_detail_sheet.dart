@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../models/interview_models.dart';
 import '../../../models/job_models.dart';
+import '../../../state/interview_state.dart';
 import '../../../state/jobs_state.dart';
+import '../../../state/navigation_state.dart';
 import '../../../state/resume_state.dart';
 import '../../../theme/aurora.dart';
 import '../../../widgets/aurora_button.dart';
@@ -108,6 +111,13 @@ class _JobDetailSheetState extends State<_JobDetailSheet> {
             const SizedBox(height: AuroraSpacing.sm),
             Text(job.description, style: AuroraText.body.copyWith(fontSize: 14, height: 1.6)),
             const SizedBox(height: AuroraSpacing.xl),
+            AuroraButton(
+              label: _drafting ? 'Drafting…' : 'Draft application',
+              icon: Icons.auto_fix_high_outlined,
+              expand: true,
+              onPressed: _drafting ? null : _draft,
+            ),
+            const SizedBox(height: AuroraSpacing.md),
             Row(
               children: [
                 Expanded(
@@ -120,8 +130,9 @@ class _JobDetailSheetState extends State<_JobDetailSheet> {
                 const SizedBox(width: AuroraSpacing.md),
                 Expanded(
                   child: AuroraButton(
-                    label: _drafting ? 'Drafting…' : 'Draft application',
-                    onPressed: _drafting ? null : _draft,
+                    label: 'Interview prep',
+                    variant: AuroraButtonVariant.ghost,
+                    onPressed: _prepInterview,
                   ),
                 ),
               ],
@@ -130,6 +141,15 @@ class _JobDetailSheetState extends State<_JobDetailSheet> {
         ),
       ),
     );
+  }
+
+  void _prepInterview() {
+    final job = widget.match.job;
+    context.read<InterviewState>().prepareForJob(
+          InterviewJobContext(jobTitle: job.title, companyName: job.companyName, jobDescription: job.description),
+        );
+    context.read<NavigationState>().goTo(3); // Prep tab
+    Navigator.of(context).pop();
   }
 
   Future<void> _save() async {

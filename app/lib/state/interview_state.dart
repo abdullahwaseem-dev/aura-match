@@ -5,36 +5,53 @@ import '../services/api_client.dart';
 
 enum InterviewStage { intro, generating, inProgress, evaluating, results }
 
-/// Drives the Interview Simulator: generate resume-grounded questions, run a
-/// chat-style Q&A, then score the transcript. Grounded in the same resume the
-/// user scanned in the Resume tab.
+/// Drives the Interview Simulator: an adaptive, turn-by-turn mock interview.
+/// Each answer is sent back to the server, which decides whether to probe
+/// deeper on a weak answer, move to a fresh topic, or end the interview
+/// (bounded 5-8 turns) — then the full transcript is scored. Optionally
+/// grounded in a specific job posting via [jobContext].
 class InterviewState extends ChangeNotifier {
   InterviewState(this._api);
 
   final ApiClient _api;
 
   InterviewStage stage = InterviewStage.intro;
-  List<String> questions = [];
+  InterviewJobContext? jobContext;
   final List<ChatMessage> messages = [];
-  final List<QaAnswer> answers = [];
-  int _index = 0;
+  final List<QaAnswer> transcript = [];
+  String? _pendingQuestion;
   InterviewResult? result;
   String? error;
 
-  bool get hasCurrentQuestion => _index < questions.length;
-  String? get currentQuestion => hasCurrentQuestion ? questions[_index] : null;
-  int get questionNumber => _index + 1;
-  int get totalQuestions => questions.length;
+  String? get currentQuestion => _pendingQuestion;
+  int get turnNumber => transcript.length + (_pendingQuestion != null ? 1 : 0);
 
-  Future<void> start({required String resumeText, required String targetRole}) async {
+  /// Sets the job to ground the next session in, without starting it yet —
+  /// call from a job card/tracker entry, then navigate to the Prep tab so
+  /// the intro screen shows this job before the user taps Start.
+  void prepareForJob(InterviewJobContext job) {
+    stage = InterviewStage.intro;
+    error = null;
+    jobContext = job;
+    _resetSession();
+    notifyListeners();
+  }
+
+  Future<void> start({
+    required String resumeText,
+    required String targetRole,
+    InterviewJobContext? job,
+  }) async {
     stage = InterviewStage.generating;
     error = null;
-    _reset();
+    jobContext = job;
+    _resetSession();
     notifyListeners();
     try {
-      questions = await _api.startInterview(resumeText: resumeText, targetRole: targetRole);
+      final question = await _api.startInterview(resumeText: resumeText, targetRole: targetRole, job: job);
+      _pendingQuestion = question;
+      messages.add(ChatMessage(text: question, fromAura: true));
       stage = InterviewStage.inProgress;
-      if (currentQuestion != null) messages.add(ChatMessage(text: currentQuestion!, fromAura: true));
     } catch (e) {
       error = e.toString();
       stage = InterviewStage.intro;
@@ -47,16 +64,32 @@ class InterviewState extends ChangeNotifier {
     required String resumeText,
     required String targetRole,
   }) async {
-    final question = currentQuestion;
+    final question = _pendingQuestion;
     if (question == null || answer.trim().isEmpty) return;
     messages.add(ChatMessage(text: answer, fromAura: false));
-    answers.add(QaAnswer(question: question, answer: answer));
-    _index++;
-    if (hasCurrentQuestion) {
-      messages.add(ChatMessage(text: currentQuestion!, fromAura: true));
+    transcript.add(QaAnswer(question: question, answer: answer));
+    _pendingQuestion = null;
+    notifyListeners();
+
+    try {
+      final (done, nextQuestion) = await _api.nextInterviewQuestion(
+        resumeText: resumeText,
+        targetRole: targetRole,
+        job: jobContext,
+        transcript: transcript,
+      );
+      if (done) {
+        await _evaluate(resumeText: resumeText, targetRole: targetRole);
+      } else {
+        _pendingQuestion = nextQuestion;
+        messages.add(ChatMessage(text: nextQuestion, fromAura: true));
+        notifyListeners();
+      }
+    } catch (e) {
+      error = e.toString();
+      // Leave the transcript intact so retrying doesn't lose progress —
+      // the last answer is recorded, just re-show the send affordance.
       notifyListeners();
-    } else {
-      await _evaluate(resumeText: resumeText, targetRole: targetRole);
     }
   }
 
@@ -64,32 +97,33 @@ class InterviewState extends ChangeNotifier {
     stage = InterviewStage.evaluating;
     notifyListeners();
     try {
-      result = await _api.evaluateInterview(resumeText: resumeText, targetRole: targetRole, answers: answers);
+      result = await _api.evaluateInterview(
+        resumeText: resumeText,
+        targetRole: targetRole,
+        job: jobContext,
+        answers: transcript,
+      );
       stage = InterviewStage.results;
       error = null;
     } catch (e) {
       error = e.toString();
-      // Keep the transcript so the user can retry evaluation without redoing the interview.
       stage = InterviewStage.inProgress;
     }
     notifyListeners();
   }
 
-  Future<void> retryEvaluation({required String resumeText, required String targetRole}) =>
-      _evaluate(resumeText: resumeText, targetRole: targetRole);
-
   void reset() {
     stage = InterviewStage.intro;
     error = null;
-    _reset();
+    jobContext = null;
+    _resetSession();
     notifyListeners();
   }
 
-  void _reset() {
-    questions = [];
+  void _resetSession() {
     messages.clear();
-    answers.clear();
-    _index = 0;
+    transcript.clear();
+    _pendingQuestion = null;
     result = null;
   }
 }

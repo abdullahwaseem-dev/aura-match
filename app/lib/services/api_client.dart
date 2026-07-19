@@ -138,19 +138,45 @@ class ApiClient {
     return TrackedApplication.fromJson(body['application'] as Map<String, dynamic>);
   }
 
-  Future<List<String>> startInterview({required String resumeText, required String targetRole}) async {
-    final body = await _post('/api/interview/start', {'resumeText': resumeText, 'targetRole': targetRole});
-    return List<String>.from(body['questions'] as List);
+  Future<String> startInterview({
+    required String resumeText,
+    required String targetRole,
+    InterviewJobContext? job,
+  }) async {
+    final body = await _post('/api/interview/start', {
+      'resumeText': resumeText,
+      'targetRole': targetRole,
+      ...?job?.toJson(),
+    });
+    return body['question'] as String;
+  }
+
+  /// Returns (done, nextQuestion) — nextQuestion is empty once done is true.
+  Future<(bool done, String question)> nextInterviewQuestion({
+    required String resumeText,
+    required String targetRole,
+    InterviewJobContext? job,
+    required List<QaAnswer> transcript,
+  }) async {
+    final body = await _post('/api/interview/next', {
+      'resumeText': resumeText,
+      'targetRole': targetRole,
+      ...?job?.toJson(),
+      'transcript': transcript.map((e) => e.toJson()).toList(),
+    });
+    return (body['done'] as bool, body['question'] as String? ?? '');
   }
 
   Future<InterviewResult> evaluateInterview({
     required String resumeText,
     required String targetRole,
+    InterviewJobContext? job,
     required List<QaAnswer> answers,
   }) async {
     final body = await _post('/api/interview/evaluate', {
       'resumeText': resumeText,
       'targetRole': targetRole,
+      ...?job?.toJson(),
       'answers': answers.map((e) => e.toJson()).toList(),
     });
     return InterviewResult.fromJson(body);

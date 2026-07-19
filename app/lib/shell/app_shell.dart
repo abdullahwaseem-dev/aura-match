@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme/aurora.dart';
 import '../widgets/aura_orb.dart';
 import '../screens/home/aura_home_screen.dart';
@@ -6,12 +7,46 @@ import '../screens/resume/resume_flow_screen.dart';
 import '../screens/jobs/jobs_flow_screen.dart';
 import '../screens/interview/interview_screen.dart';
 import '../screens/profile/profile_placeholder_screen.dart';
+import '../state/navigation_state.dart';
 
-class AppShell extends StatefulWidget {
+class AppShell extends StatelessWidget {
   const AppShell({super.key});
 
+  static const _screens = [
+    ResumeFlowScreen(),
+    AuraHomeScreen(),
+    JobsFlowScreen(),
+    InterviewScreen(),
+    ProfilePlaceholderScreen(),
+  ];
+
   @override
-  State<AppShell> createState() => _AppShellState();
+  Widget build(BuildContext context) {
+    final index = context.watch<NavigationState>().tabIndex;
+    final wide = MediaQuery.of(context).size.width >= 900;
+    return Scaffold(
+      backgroundColor: AuroraColors.void_,
+      body: wide ? _wideLayout(context, index) : _narrowLayout(context, index),
+    );
+  }
+
+  Widget _narrowLayout(BuildContext context, int index) {
+    return Column(
+      children: [
+        Expanded(child: IndexedStack(index: index, children: _screens)),
+        _BottomBar(index: index, onSelect: (i) => context.read<NavigationState>().goTo(i)),
+      ],
+    );
+  }
+
+  Widget _wideLayout(BuildContext context, int index) {
+    return Row(
+      children: [
+        _SideRail(index: index, onSelect: (i) => context.read<NavigationState>().goTo(i)),
+        Expanded(child: IndexedStack(index: index, children: _screens)),
+      ],
+    );
+  }
 }
 
 class _NavItem {
@@ -27,45 +62,6 @@ const _items = [
   _NavItem('Prep', Icons.mic_none_outlined),
   _NavItem('Profile', Icons.person_outline),
 ];
-
-const _screens = [
-  ResumeFlowScreen(),
-  AuraHomeScreen(),
-  JobsFlowScreen(),
-  InterviewScreen(),
-  ProfilePlaceholderScreen(),
-];
-
-class _AppShellState extends State<AppShell> {
-  int _index = 1; // Home is the default landing tab
-
-  @override
-  Widget build(BuildContext context) {
-    final wide = MediaQuery.of(context).size.width >= 900;
-    return Scaffold(
-      backgroundColor: AuroraColors.void_,
-      body: wide ? _wideLayout() : _narrowLayout(),
-    );
-  }
-
-  Widget _narrowLayout() {
-    return Column(
-      children: [
-        Expanded(child: IndexedStack(index: _index, children: _screens)),
-        _BottomBar(index: _index, onSelect: (i) => setState(() => _index = i)),
-      ],
-    );
-  }
-
-  Widget _wideLayout() {
-    return Row(
-      children: [
-        _SideRail(index: _index, onSelect: (i) => setState(() => _index = i)),
-        Expanded(child: IndexedStack(index: _index, children: _screens)),
-      ],
-    );
-  }
-}
 
 class _BottomBar extends StatelessWidget {
   const _BottomBar({required this.index, required this.onSelect});

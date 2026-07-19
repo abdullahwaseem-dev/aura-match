@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../models/interview_models.dart';
 import '../../../models/job_models.dart';
 import '../../../services/resume_pdf.dart';
+import '../../../state/interview_state.dart';
 import '../../../state/jobs_state.dart';
+import '../../../state/navigation_state.dart';
 import '../../../theme/aurora.dart';
 import '../../../widgets/aurora_button.dart';
 import '../../../widgets/glass_container.dart';
@@ -156,10 +159,27 @@ class _DraftReviewSheetState extends State<_DraftReviewSheet> {
               expand: true,
               onPressed: _markingApplied || widget.application.status == ApplicationStatus.applied ? null : _markApplied,
             ),
+            const SizedBox(height: AuroraSpacing.md),
+            AuroraButton(
+              label: 'Prep for the interview',
+              icon: Icons.mic_none_outlined,
+              variant: AuroraButtonVariant.ghost,
+              expand: true,
+              onPressed: _prepInterview,
+            ),
           ],
         ),
       ),
     );
+  }
+
+  void _prepInterview() {
+    final job = widget.application.job;
+    context.read<InterviewState>().prepareForJob(
+          InterviewJobContext(jobTitle: job.title, companyName: job.companyName, jobDescription: job.description),
+        );
+    context.read<NavigationState>().goTo(3); // Prep tab
+    Navigator.of(context).pop();
   }
 
   Widget _resumeHeading(String text) => Padding(

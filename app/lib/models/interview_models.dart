@@ -1,5 +1,21 @@
 import 'resume_models.dart' show ScoreCategory;
 
+/// Grounds an interview session in a real job posting instead of just a
+/// target-role string — pass this when launching Prep from a specific job.
+class InterviewJobContext {
+  const InterviewJobContext({required this.jobTitle, this.companyName, this.jobDescription});
+
+  final String jobTitle;
+  final String? companyName;
+  final String? jobDescription;
+
+  Map<String, dynamic> toJson() => {
+        'jobTitle': jobTitle,
+        if (companyName != null) 'companyName': companyName,
+        if (jobDescription != null) 'jobDescription': jobDescription,
+      };
+}
+
 class InterviewResult {
   InterviewResult({
     required this.overallScore,

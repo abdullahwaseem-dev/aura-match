@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../models/interview_models.dart';
 import '../../../models/job_models.dart';
+import '../../../state/interview_state.dart';
 import '../../../state/jobs_state.dart';
+import '../../../state/navigation_state.dart';
 import '../../../theme/aurora.dart';
 import '../../../widgets/aura_orb.dart';
+import '../../../widgets/aurora_button.dart';
 import '../../../widgets/glass_container.dart';
 
 class TrackerView extends StatefulWidget {
@@ -143,6 +147,24 @@ class _ApplicationRow extends StatelessWidget {
                   ),
                 );
               }).toList(),
+            ),
+            const SizedBox(height: AuroraSpacing.lg),
+            AuroraButton(
+              label: 'Prep for the interview',
+              icon: Icons.mic_none_outlined,
+              variant: AuroraButtonVariant.ghost,
+              expand: true,
+              onPressed: () {
+                context.read<InterviewState>().prepareForJob(
+                      InterviewJobContext(
+                        jobTitle: application.job.title,
+                        companyName: application.job.companyName,
+                        jobDescription: application.job.description,
+                      ),
+                    );
+                context.read<NavigationState>().goTo(3);
+                Navigator.of(sheetContext).pop();
+              },
             ),
           ],
         ),

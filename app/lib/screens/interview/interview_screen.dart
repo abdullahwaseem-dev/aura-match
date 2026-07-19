@@ -77,6 +77,7 @@ class _IntroView extends StatelessWidget {
   Widget build(BuildContext context) {
     final resume = context.read<ResumeState>();
     final interview = context.watch<InterviewState>();
+    final job = interview.jobContext;
 
     return SafeArea(
       child: SingleChildScrollView(
@@ -86,19 +87,47 @@ class _IntroView extends StatelessWidget {
           children: [
             Text('PREP', style: AuroraText.caption.copyWith(color: AuroraColors.violetSoft)),
             const SizedBox(height: AuroraSpacing.sm),
-            Text('Interview Simulator', style: AuroraText.displayM),
+            Text(job != null ? 'Interview prep' : 'Interview Simulator', style: AuroraText.displayM),
             const SizedBox(height: AuroraSpacing.lg),
             const Center(child: AuraOrb(size: 76)),
             const SizedBox(height: AuroraSpacing.lg),
+            if (job != null) ...[
+              GlassContainer(
+                borderColor: AuroraColors.cyan.withValues(alpha: 0.25),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.work_outline, size: 18, color: AuroraColors.cyanSoft),
+                    const SizedBox(width: AuroraSpacing.sm),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('GROUNDED IN THIS JOB', style: AuroraText.caption.copyWith(color: AuroraColors.cyanSoft, fontSize: 10)),
+                          const SizedBox(height: 4),
+                          Text(
+                            job.companyName != null ? '${job.jobTitle} at ${job.companyName}' : job.jobTitle,
+                            style: AuroraText.body.copyWith(fontWeight: FontWeight.w700, fontSize: 13.5),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: AuroraSpacing.md),
+            ],
             GlassContainer(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('How it works', style: AuroraText.body.copyWith(fontWeight: FontWeight.w700)),
                   const SizedBox(height: AuroraSpacing.smd),
-                  _step('1', "Aura asks 5 questions tailored to your resume and target role."),
-                  _step('2', 'You answer each one in your own words.'),
-                  _step('3', 'You get a scored readout — strengths, gaps, and a readiness verdict.'),
+                  _step('1', job != null
+                      ? "Aura asks questions grounded in your resume and this job's real posting."
+                      : "Aura asks questions tailored to your resume and target role."),
+                  _step('2', 'You answer each one in your own words — Aura adapts: probing deeper on weak answers, moving on from strong ones.'),
+                  _step('3', 'After 5-8 exchanges you get a scored readout — strengths, gaps, and a readiness verdict.'),
                 ],
               ),
             ),
@@ -113,7 +142,8 @@ class _IntroView extends StatelessWidget {
               expand: true,
               onPressed: () => context.read<InterviewState>().start(
                     resumeText: resume.rebuiltResume ?? resume.resumeText!,
-                    targetRole: resume.targetRole.isEmpty ? 'this role' : resume.targetRole,
+                    targetRole: resume.targetRole.isEmpty ? (job?.jobTitle ?? 'this role') : resume.targetRole,
+                    job: job,
                   ),
             ),
           ],
@@ -188,14 +218,16 @@ class _ChatViewState extends State<_ChatView> {
   }
 
   void _submit() {
+    final interview = context.read<InterviewState>();
+    if (interview.currentQuestion == null) return; // already waiting on the next question
     final text = _controller.text.trim();
     if (text.isEmpty) return;
     _controller.clear();
     final resume = context.read<ResumeState>();
-    context.read<InterviewState>().answerCurrent(
+    interview.answerCurrent(
           answer: text,
           resumeText: resume.rebuiltResume ?? resume.resumeText!,
-          targetRole: resume.targetRole.isEmpty ? 'this role' : resume.targetRole,
+          targetRole: resume.targetRole.isEmpty ? (interview.jobContext?.jobTitle ?? 'this role') : resume.targetRole,
         );
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
@@ -211,6 +243,7 @@ class _ChatViewState extends State<_ChatView> {
   @override
   Widget build(BuildContext context) {
     final interview = context.watch<InterviewState>();
+    final waiting = interview.currentQuestion == null;
 
     return SafeArea(
       child: Column(
@@ -228,7 +261,7 @@ class _ChatViewState extends State<_ChatView> {
                   ),
                 ),
                 Text(
-                  '${interview.questionNumber}/${interview.totalQuestions}',
+                  'Turn ${interview.turnNumber}',
                   style: AuroraText.mono.copyWith(fontSize: 11),
                 ),
               ],
@@ -238,7 +271,14 @@ class _ChatViewState extends State<_ChatView> {
             child: ListView(
               controller: _scrollController,
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              children: interview.messages.map((m) => ChatBubble(text: m.text, fromAura: m.fromAura)).toList(),
+              children: [
+                ...interview.messages.map((m) => ChatBubble(text: m.text, fromAura: m.fromAura)),
+                if (waiting)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 4),
+                    child: ChatBubble(text: 'Aura is thinking…', fromAura: true),
+                  ),
+              ],
             ),
           ),
           Padding(
@@ -251,9 +291,10 @@ class _ChatViewState extends State<_ChatView> {
                     style: AuroraText.body,
                     minLines: 1,
                     maxLines: 4,
+                    enabled: !waiting,
                     onSubmitted: (_) => _submit(),
                     decoration: InputDecoration(
-                      hintText: 'Type your answer…',
+                      hintText: waiting ? 'Waiting for the next question…' : 'Type your answer…',
                       hintStyle: AuroraText.body.copyWith(color: AuroraColors.mistDim),
                       filled: true,
                       fillColor: Colors.white.withValues(alpha: 0.03),
@@ -274,7 +315,7 @@ class _ChatViewState extends State<_ChatView> {
                   ),
                 ),
                 const SizedBox(width: 10),
-                AuroraButton(label: 'Send', onPressed: _submit),
+                AuroraButton(label: 'Send', onPressed: waiting ? null : _submit),
               ],
             ),
           ),
