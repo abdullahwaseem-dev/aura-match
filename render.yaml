@@ -23,6 +23,14 @@ services:
         value: llama-3.3-70b-versatile
       - key: GROQ_FAST_MODEL
         value: llama-3.1-8b-instant
+      # Supabase backs the Jobs tab (cached listings, AI match scores, the
+      # application tracker). SUPABASE_URL is just the project URL (not secret,
+      # also shipped inside client apps). SUPABASE_ANON_KEY is `sync: false` so
+      # it's entered in the Render dashboard, not committed to this public repo.
+      - key: SUPABASE_URL
+        value: https://fjpxajbctpwetfhahvlh.supabase.co
+      - key: SUPABASE_ANON_KEY
+        sync: false
       - key: NODE_VERSION
         value: 20.11.0
       # PORT is intentionally not set here — Render injects it automatically,
