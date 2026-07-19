@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'services/api_client.dart';
 import 'shell/app_shell.dart';
+import 'state/interview_state.dart';
 import 'state/jobs_state.dart';
 import 'state/resume_state.dart';
 import 'theme/aurora.dart';
@@ -23,6 +24,9 @@ class AuraMatchApp extends StatelessWidget {
         ),
         ChangeNotifierProvider<JobsState>(
           create: (context) => JobsState(context.read<ApiClient>()),
+        ),
+        ChangeNotifierProvider<InterviewState>(
+          create: (context) => InterviewState(context.read<ApiClient>()),
         ),
       ],
       child: MaterialApp(

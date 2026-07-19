@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../models/job_models.dart';
+import '../../../services/resume_pdf.dart';
 import '../../../state/jobs_state.dart';
 import '../../../theme/aurora.dart';
 import '../../../widgets/aurora_button.dart';
@@ -31,14 +32,17 @@ class _DraftReviewSheet extends StatefulWidget {
 
 class _DraftReviewSheetState extends State<_DraftReviewSheet> {
   bool _markingApplied = false;
+  bool _exporting = false;
+
+  TailoredResume get _resume => widget.draft.resume;
 
   @override
   Widget build(BuildContext context) {
     final job = widget.application.job;
     return DraggableScrollableSheet(
-      initialChildSize: 0.9,
+      initialChildSize: 0.92,
       minChildSize: 0.5,
-      maxChildSize: 0.95,
+      maxChildSize: 0.96,
       expand: false,
       builder: (context, scrollController) => Container(
         decoration: const BoxDecoration(
@@ -58,7 +62,7 @@ class _DraftReviewSheetState extends State<_DraftReviewSheet> {
                 decoration: BoxDecoration(color: AuroraColors.line, borderRadius: BorderRadius.circular(2)),
               ),
             ),
-            Text('DRAFTED FOR YOU TO REVIEW', style: AuroraText.caption.copyWith(color: AuroraColors.violetSoft)),
+            Text('TAILORED RESUME · REVIEW', style: AuroraText.caption.copyWith(color: AuroraColors.violetSoft)),
             const SizedBox(height: AuroraSpacing.sm),
             Text('${job.title} at ${job.companyName}', style: AuroraText.displayM),
             const SizedBox(height: AuroraSpacing.md),
@@ -71,7 +75,7 @@ class _DraftReviewSheetState extends State<_DraftReviewSheet> {
                   const SizedBox(width: AuroraSpacing.sm),
                   Expanded(
                     child: Text(
-                      "Aura drafted this from your resume — nothing is submitted automatically. Review it, then apply yourself on the employer's real posting.",
+                      "Aura rewrote your resume for this job using only facts from your original — nothing is invented or auto-submitted. Review it, download the PDF, then apply yourself on the employer's real posting.",
                       style: AuroraText.bodySm,
                     ),
                   ),
@@ -79,36 +83,76 @@ class _DraftReviewSheetState extends State<_DraftReviewSheet> {
               ),
             ),
             const SizedBox(height: AuroraSpacing.lg),
-            _Section(title: 'Tailored summary', body: widget.draft.tailoredSummary),
-            if (widget.draft.tailoredHighlights.isNotEmpty) ...[
-              const SizedBox(height: AuroraSpacing.lg),
-              Text('Reworked highlights', style: AuroraText.bodySm.copyWith(color: AuroraColors.mist)),
-              const SizedBox(height: AuroraSpacing.sm),
-              GlassContainer(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: widget.draft.tailoredHighlights
-                      .map((h) => Padding(
-                            padding: const EdgeInsets.only(bottom: 8),
-                            child: Text('• $h', style: AuroraText.body.copyWith(fontSize: 13.5, height: 1.5)),
-                          ))
-                      .toList(),
-                ),
+
+            // Full tailored resume preview.
+            GlassContainer(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (_resume.fullName.isNotEmpty)
+                    Text(_resume.fullName, style: AuroraText.displayM.copyWith(fontSize: 19)),
+                  if (_resume.headline.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2),
+                      child: Text(_resume.headline, style: AuroraText.body.copyWith(color: AuroraColors.cyanSoft, fontSize: 13.5)),
+                    ),
+                  if (_resume.contact.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(_resume.contact, style: AuroraText.bodySm.copyWith(color: AuroraColors.mist)),
+                    ),
+                  if (_resume.summary.isNotEmpty) ...[
+                    _resumeHeading('Summary'),
+                    Text(_resume.summary, style: AuroraText.body.copyWith(fontSize: 13.5, height: 1.55)),
+                  ],
+                  if (_resume.skills.isNotEmpty) ...[
+                    _resumeHeading('Skills'),
+                    Text(_resume.skills.join('  ·  '), style: AuroraText.body.copyWith(fontSize: 13, height: 1.5)),
+                  ],
+                  if (_resume.experience.isNotEmpty) ...[
+                    _resumeHeading('Experience'),
+                    ..._resume.experience.map(_experienceBlock),
+                  ],
+                  if (_resume.education.isNotEmpty) ...[
+                    _resumeHeading('Education'),
+                    ..._resume.education.map(
+                      (ed) => Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          [
+                            [ed.credential, ed.institution].where((s) => s.isNotEmpty).join(' — '),
+                            if (ed.dates.isNotEmpty) ed.dates,
+                          ].join('  ·  '),
+                          style: AuroraText.body.copyWith(fontSize: 13),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
-            ],
+            ),
+            const SizedBox(height: AuroraSpacing.md),
+            AuroraButton(
+              label: _exporting ? 'Preparing PDF…' : 'Download resume PDF',
+              icon: Icons.picture_as_pdf_outlined,
+              expand: true,
+              onPressed: _exporting ? null : _exportPdf,
+            ),
+
             const SizedBox(height: AuroraSpacing.lg),
             _Section(title: 'Cover note', body: widget.draft.coverNote),
             const SizedBox(height: AuroraSpacing.xl),
             AuroraButton(
               label: 'Open posting & apply',
               icon: Icons.open_in_new,
+              variant: AuroraButtonVariant.secondary,
               expand: true,
               onPressed: () => _openPosting(job.applyUrl),
             ),
             const SizedBox(height: AuroraSpacing.md),
             AuroraButton(
               label: _markingApplied ? 'Marking…' : "I've applied — mark it",
-              variant: AuroraButtonVariant.secondary,
+              variant: AuroraButtonVariant.ghost,
               expand: true,
               onPressed: _markingApplied || widget.application.status == ApplicationStatus.applied ? null : _markApplied,
             ),
@@ -116,6 +160,52 @@ class _DraftReviewSheetState extends State<_DraftReviewSheet> {
         ),
       ),
     );
+  }
+
+  Widget _resumeHeading(String text) => Padding(
+        padding: const EdgeInsets.only(top: AuroraSpacing.md, bottom: AuroraSpacing.xs),
+        child: Text(text.toUpperCase(), style: AuroraText.caption.copyWith(color: AuroraColors.mist)),
+      );
+
+  Widget _experienceBlock(ResumeExperience e) {
+    final header = [e.role, e.company].where((s) => s.isNotEmpty).join(' — ');
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AuroraSpacing.smd),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: Text(header, style: AuroraText.body.copyWith(fontSize: 13.5, fontWeight: FontWeight.w700))),
+              if (e.dates.isNotEmpty) Text(e.dates, style: AuroraText.bodySm.copyWith(color: AuroraColors.mistDim)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          ...e.bullets.map(
+            (b) => Padding(
+              padding: const EdgeInsets.only(bottom: 3, left: 4),
+              child: Text('•  $b', style: AuroraText.body.copyWith(fontSize: 12.5, height: 1.45)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _exportPdf() async {
+    setState(() => _exporting = true);
+    try {
+      await ResumePdf.shareTailoredResume(
+        resume: _resume,
+        jobTitle: widget.application.job.title,
+        company: widget.application.job.companyName,
+      );
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not export PDF: $e')));
+    } finally {
+      if (mounted) setState(() => _exporting = false);
+    }
   }
 
   Future<void> _openPosting(String url) async {

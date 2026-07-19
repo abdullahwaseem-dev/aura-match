@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:http/http.dart' as http;
 import '../models/resume_models.dart';
 import '../models/job_models.dart';
+import '../models/interview_models.dart';
 
 class ApiException implements Exception {
   ApiException(this.message);
@@ -104,7 +105,7 @@ class ApiClient {
       {'deviceId': deviceId, 'resumeText': resumeText, 'targetRole': targetRole},
     );
     return (
-      ApplicationDraft.fromJson(body['draft'] as Map<String, dynamic>),
+      ApplicationDraft.fromJson(body),
       TrackedApplication.fromJson(body['application'] as Map<String, dynamic>),
     );
   }
@@ -135,6 +136,24 @@ class ApiClient {
         .timeout(const Duration(seconds: 15));
     final body = _decode(res);
     return TrackedApplication.fromJson(body['application'] as Map<String, dynamic>);
+  }
+
+  Future<List<String>> startInterview({required String resumeText, required String targetRole}) async {
+    final body = await _post('/api/interview/start', {'resumeText': resumeText, 'targetRole': targetRole});
+    return List<String>.from(body['questions'] as List);
+  }
+
+  Future<InterviewResult> evaluateInterview({
+    required String resumeText,
+    required String targetRole,
+    required List<QaAnswer> answers,
+  }) async {
+    final body = await _post('/api/interview/evaluate', {
+      'resumeText': resumeText,
+      'targetRole': targetRole,
+      'answers': answers.map((e) => e.toJson()).toList(),
+    });
+    return InterviewResult.fromJson(body);
   }
 
   Future<Map<String, dynamic>> _post(String path, Map<String, dynamic> payload) async {

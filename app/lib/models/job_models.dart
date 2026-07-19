@@ -50,16 +50,80 @@ class JobMatch {
       );
 }
 
-class ApplicationDraft {
-  ApplicationDraft({required this.tailoredSummary, required this.tailoredHighlights, required this.coverNote});
+class ResumeExperience {
+  ResumeExperience({required this.role, required this.company, required this.dates, required this.bullets});
 
-  final String tailoredSummary;
-  final List<String> tailoredHighlights;
+  final String role;
+  final String company;
+  final String dates;
+  final List<String> bullets;
+
+  factory ResumeExperience.fromJson(Map<String, dynamic> json) => ResumeExperience(
+        role: json['role'] as String? ?? '',
+        company: json['company'] as String? ?? '',
+        dates: json['dates'] as String? ?? '',
+        bullets: List<String>.from(json['bullets'] as List? ?? const []),
+      );
+}
+
+class ResumeEducation {
+  ResumeEducation({required this.credential, required this.institution, required this.dates});
+
+  final String credential;
+  final String institution;
+  final String dates;
+
+  factory ResumeEducation.fromJson(Map<String, dynamic> json) => ResumeEducation(
+        credential: json['credential'] as String? ?? '',
+        institution: json['institution'] as String? ?? '',
+        dates: json['dates'] as String? ?? '',
+      );
+}
+
+/// A full resume rewritten for one specific job — rendered on screen and
+/// exported to PDF.
+class TailoredResume {
+  TailoredResume({
+    required this.fullName,
+    required this.headline,
+    required this.contact,
+    required this.summary,
+    required this.skills,
+    required this.experience,
+    required this.education,
+  });
+
+  final String fullName;
+  final String headline;
+  final String contact;
+  final String summary;
+  final List<String> skills;
+  final List<ResumeExperience> experience;
+  final List<ResumeEducation> education;
+
+  factory TailoredResume.fromJson(Map<String, dynamic> json) => TailoredResume(
+        fullName: json['fullName'] as String? ?? '',
+        headline: json['headline'] as String? ?? '',
+        contact: json['contact'] as String? ?? '',
+        summary: json['summary'] as String? ?? '',
+        skills: List<String>.from(json['skills'] as List? ?? const []),
+        experience: (json['experience'] as List? ?? const [])
+            .map((e) => ResumeExperience.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        education: (json['education'] as List? ?? const [])
+            .map((e) => ResumeEducation.fromJson(e as Map<String, dynamic>))
+            .toList(),
+      );
+}
+
+class ApplicationDraft {
+  ApplicationDraft({required this.resume, required this.coverNote});
+
+  final TailoredResume resume;
   final String coverNote;
 
   factory ApplicationDraft.fromJson(Map<String, dynamic> json) => ApplicationDraft(
-        tailoredSummary: json['tailoredSummary'] as String? ?? '',
-        tailoredHighlights: List<String>.from(json['tailoredHighlights'] as List? ?? const []),
+        resume: TailoredResume.fromJson(json['resume'] as Map<String, dynamic>),
         coverNote: json['coverNote'] as String? ?? '',
       );
 }

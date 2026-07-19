@@ -5,6 +5,7 @@ import resumeRoutes from "./routes/resume.js";
 import hiringManagerRoutes from "./routes/hiringManager.js";
 import jobsRoutes from "./routes/jobs.js";
 import applicationsRoutes from "./routes/applications.js";
+import interviewRoutes from "./routes/interview.js";
 import { isConfigured } from "./groqClient.js";
 import { isConfigured as isSupabaseConfigured } from "./lib/supabaseClient.js";
 
@@ -22,6 +23,7 @@ app.use("/api/resume", resumeRoutes);
 app.use("/api/hiring-manager", hiringManagerRoutes);
 app.use("/api/jobs", jobsRoutes);
 app.use("/api/applications", applicationsRoutes);
+app.use("/api/interview", interviewRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error(err);
