@@ -10,6 +10,8 @@ import 'state/auth_state.dart';
 import 'state/interview_state.dart';
 import 'state/jobs_state.dart';
 import 'state/navigation_state.dart';
+import 'state/profile_state.dart';
+import 'state/resume_library_state.dart';
 import 'state/resume_state.dart';
 import 'theme/aurora.dart';
 
@@ -48,6 +50,12 @@ class AuraMatchApp extends StatelessWidget {
           create: (context) => InterviewState(context.read<ApiClient>()),
         ),
         ChangeNotifierProvider<NavigationState>(create: (_) => NavigationState()),
+        ChangeNotifierProvider<ProfileState>(
+          create: (context) => ProfileState(context.read<ApiClient>()),
+        ),
+        ChangeNotifierProvider<ResumeLibraryState>(
+          create: (context) => ResumeLibraryState(context.read<ApiClient>()),
+        ),
       ],
       child: MaterialApp(
         title: 'AURA MATCH',
@@ -83,6 +91,8 @@ class _AuthGateState extends State<_AuthGate> {
         context.read<ResumeState>().reset();
         context.read<JobsState>().clear();
         context.read<InterviewState>().reset();
+        context.read<ProfileState>().clear();
+        context.read<ResumeLibraryState>().clear();
         context.read<NavigationState>().goTo(1);
       });
     }

@@ -61,6 +61,66 @@ const MATCH_SHAPE_EXAMPLE = `{
   ]
 }`;
 
+const AUTO_DRAFT_MIN_SCORE = 80;
+const AUTO_DRAFT_MAX_PER_FEED = 3;
+
+// Optional per-user setting (Profile -> "Auto-draft high matches"). Drafts
+// are still consent-gated the same as everywhere else in the app — this
+// only pre-fills a tailored resume + cover note into the tracker so it's
+// ready to review; nothing is ever submitted anywhere automatically.
+async function autoDraftTopMatches({ req, rows, pool, resumeText, targetRole }) {
+  const { data: profile } = await req.supabase
+    .from("profiles")
+    .select("auto_draft_enabled")
+    .eq("user_id", req.userId)
+    .maybeSingle();
+  if (!profile?.auto_draft_enabled) return;
+
+  const candidates = rows
+    .filter((r) => r.match_score >= AUTO_DRAFT_MIN_SCORE)
+    .sort((a, b) => b.match_score - a.match_score)
+    .slice(0, AUTO_DRAFT_MAX_PER_FEED);
+  if (candidates.length === 0) return;
+
+  const { data: existing } = await req.supabase
+    .from("applications")
+    .select("job_id")
+    .in(
+      "job_id",
+      candidates.map((c) => c.job_id)
+    );
+  const alreadyDrafted = new Set((existing || []).map((a) => a.job_id));
+
+  for (const c of candidates) {
+    if (alreadyDrafted.has(c.job_id)) continue;
+    const job = pool.get(c.job_id);
+    if (!job) continue;
+    try {
+      const { resume, coverNote } = await generateTailoredDraft({
+        title: job.title,
+        companyName: job.company_name,
+        description: job.description,
+        resumeText,
+        targetRole,
+      });
+      await req.supabase.from("applications").upsert(
+        {
+          user_id: req.userId,
+          job_id: c.job_id,
+          status: "ready",
+          tailored_resume: resumeToText(resume),
+          cover_note: coverNote,
+        },
+        { onConflict: "user_id,job_id" }
+      );
+    } catch (err) {
+      // Auto-draft is a background convenience — never fail the feed
+      // request itself over it, just skip this one match.
+      console.warn(`[auto-draft] failed for job ${c.job_id}: ${err.message}`);
+    }
+  }
+}
+
 router.post("/feed", async (req, res) => {
   if (!isSupabaseConfigured()) return res.status(503).json({ error: "Supabase is not configured on the server." });
   if (!isGroqConfigured()) return res.status(503).json({ error: "GROQ_API_KEY is not set on the server." });
@@ -122,6 +182,8 @@ router.post("/feed", async (req, res) => {
         .upsert(rows, { onConflict: "user_id,job_id" });
       if (upsertErr) throw new Error(upsertErr.message);
     }
+
+    await autoDraftTopMatches({ req, rows, pool: byId, resumeText, targetRole });
 
     const { data: joined, error: joinErr } = await req.supabase
       .from("job_matches")

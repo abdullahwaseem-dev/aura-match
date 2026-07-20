@@ -7,6 +7,9 @@ import hiringManagerRoutes from "./routes/hiringManager.js";
 import jobsRoutes from "./routes/jobs.js";
 import applicationsRoutes from "./routes/applications.js";
 import interviewRoutes from "./routes/interview.js";
+import profileRoutes from "./routes/profile.js";
+import resumesRoutes from "./routes/resumes.js";
+import privacyRoutes from "./routes/privacy.js";
 import { isConfigured } from "./groqClient.js";
 import { isConfigured as isSupabaseConfigured } from "./lib/supabaseClient.js";
 
@@ -25,6 +28,9 @@ app.use("/api/hiring-manager", hiringManagerRoutes);
 app.use("/api/jobs", jobsRoutes);
 app.use("/api/applications", applicationsRoutes);
 app.use("/api/interview", interviewRoutes);
+app.use("/api/profile", profileRoutes);
+app.use("/api/resumes", resumesRoutes);
+app.use("/api/privacy", privacyRoutes);
 
 app.use((err, _req, res, _next) => {
   if (err instanceof multer.MulterError) {

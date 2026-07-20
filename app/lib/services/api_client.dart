@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 import '../models/resume_models.dart';
 import '../models/job_models.dart';
 import '../models/interview_models.dart';
+import '../models/profile_models.dart';
 
 class ApiException implements Exception {
   ApiException(this.message);
@@ -222,6 +223,68 @@ class ApiClient {
       'answers': answers.map((e) => e.toJson()).toList(),
     });
     return InterviewResult.fromJson(body);
+  }
+
+  Future<UserProfile> fetchProfile() async {
+    final body = await _get('/api/profile');
+    return UserProfile.fromJson(body['profile'] as Map<String, dynamic>);
+  }
+
+  Future<UserProfile> setAutoDraftEnabled(bool enabled) async {
+    final body = await _patch('/api/profile', {'autoDraftEnabled': enabled});
+    return UserProfile.fromJson(body['profile'] as Map<String, dynamic>);
+  }
+
+  Future<List<SavedResume>> listSavedResumes() async {
+    final body = await _get('/api/resumes');
+    return (body['resumes'] as List).map((e) => SavedResume.fromJson(e as Map<String, dynamic>)).toList();
+  }
+
+  Future<SavedResumeDetail> fetchSavedResume(String id) async {
+    final body = await _get('/api/resumes/$id');
+    return SavedResumeDetail.fromJson(body['resume'] as Map<String, dynamic>);
+  }
+
+  Future<SavedResume> saveResumeToLibrary({
+    required String fileName,
+    required String resumeText,
+    required String targetRole,
+    int? atsScore,
+  }) async {
+    final body = await _post('/api/resumes', {
+      'fileName': fileName,
+      'resumeText': resumeText,
+      'targetRole': targetRole,
+      if (atsScore != null) 'atsScore': atsScore,
+    });
+    return SavedResume.fromJson(body['resume'] as Map<String, dynamic>);
+  }
+
+  Future<void> deleteSavedResume(String id) => _delete('/api/resumes/$id');
+
+  Future<Map<String, dynamic>> exportPrivacyData() => _get('/api/privacy/export');
+
+  Future<void> deleteAllMyData() => _delete('/api/privacy/data');
+
+  Future<Map<String, dynamic>> _get(String path) async {
+    final res = await http.get(Uri.parse('$baseUrl$path'), headers: _authHeaders).timeout(const Duration(seconds: 20));
+    return _decode(res);
+  }
+
+  Future<Map<String, dynamic>> _patch(String path, Map<String, dynamic> payload) async {
+    final res = await http
+        .patch(
+          Uri.parse('$baseUrl$path'),
+          headers: {'Content-Type': 'application/json', ..._authHeaders},
+          body: jsonEncode(payload),
+        )
+        .timeout(const Duration(seconds: 20));
+    return _decode(res);
+  }
+
+  Future<void> _delete(String path) async {
+    final res = await http.delete(Uri.parse('$baseUrl$path'), headers: _authHeaders).timeout(const Duration(seconds: 20));
+    _decode(res);
   }
 
   Future<Map<String, dynamic>> _post(String path, Map<String, dynamic> payload) async {

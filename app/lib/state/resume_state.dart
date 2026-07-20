@@ -119,6 +119,17 @@ class ResumeState extends ChangeNotifier {
     _setLoading(false);
   }
 
+  /// Loads a saved Resume Library entry back into the active pipeline and
+  /// re-runs the scan, so the user picks up right where a saved snapshot
+  /// left off rather than needing to re-upload the file.
+  Future<void> loadSaved({required String fileName, required String resumeText, required String targetRole}) async {
+    reset();
+    this.fileName = fileName;
+    this.resumeText = resumeText;
+    this.targetRole = targetRole;
+    await runScan();
+  }
+
   void reset() {
     stage = PipelineStage.empty;
     fileName = null;

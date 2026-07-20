@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../../state/resume_library_state.dart';
 import '../../../state/resume_state.dart';
 import '../../../theme/aurora.dart';
 import '../../../widgets/aurora_button.dart';
@@ -7,8 +8,35 @@ import '../../../widgets/glass_container.dart';
 import '../../../widgets/meter_bar.dart';
 import '../../../widgets/score_ring.dart';
 
-class ScorecardView extends StatelessWidget {
+class ScorecardView extends StatefulWidget {
   const ScorecardView({super.key});
+
+  @override
+  State<ScorecardView> createState() => _ScorecardViewState();
+}
+
+class _ScorecardViewState extends State<ScorecardView> {
+  bool _saving = false;
+  bool _saved = false;
+
+  Future<void> _saveToLibrary(ResumeState state) async {
+    setState(() => _saving = true);
+    try {
+      await context.read<ResumeLibraryState>().save(
+            fileName: state.fileName ?? 'Untitled resume',
+            resumeText: state.rebuiltResume ?? state.resumeText!,
+            targetRole: state.targetRole,
+            atsScore: state.scanResult?.atsScore,
+          );
+      if (mounted) setState(() => _saved = true);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -87,6 +115,13 @@ class ScorecardView extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 24),
+            AuroraButton(
+              label: _saved ? 'Saved to library' : (_saving ? 'Saving…' : 'Save to resume library'),
+              icon: _saved ? Icons.check : Icons.bookmark_add_outlined,
+              expand: true,
+              onPressed: (_saving || _saved) ? null : () => _saveToLibrary(state),
+            ),
+            const SizedBox(height: 12),
             AuroraButton(
               label: 'Start a new resume',
               expand: true,
