@@ -110,11 +110,29 @@ class _DraftReviewSheetState extends State<_DraftReviewSheet> {
                   ],
                   if (_resume.skills.isNotEmpty) ...[
                     _resumeHeading('Skills'),
-                    Text(_resume.skills.join('  ·  '), style: AuroraText.body.copyWith(fontSize: 13, height: 1.5)),
+                    ..._resume.skills.map(
+                      (c) => Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text.rich(
+                          TextSpan(
+                            children: [
+                              if (c.category.isNotEmpty)
+                                TextSpan(text: '${c.category}: ', style: const TextStyle(fontWeight: FontWeight.w700)),
+                              TextSpan(text: c.items.join(', ')),
+                            ],
+                          ),
+                          style: AuroraText.body.copyWith(fontSize: 13, height: 1.5),
+                        ),
+                      ),
+                    ),
                   ],
                   if (_resume.experience.isNotEmpty) ...[
                     _resumeHeading('Experience'),
                     ..._resume.experience.map(_experienceBlock),
+                  ],
+                  if (_resume.projects.isNotEmpty) ...[
+                    _resumeHeading('Projects'),
+                    ..._resume.projects.map(_projectBlock),
                   ],
                   if (_resume.education.isNotEmpty) ...[
                     _resumeHeading('Education'),
@@ -130,6 +148,10 @@ class _DraftReviewSheetState extends State<_DraftReviewSheet> {
                         ),
                       ),
                     ),
+                  ],
+                  if (_resume.languages.isNotEmpty) ...[
+                    _resumeHeading('Languages'),
+                    Text(_resume.languages.join('  ·  '), style: AuroraText.body.copyWith(fontSize: 13, height: 1.5)),
                   ],
                 ],
               ),
@@ -210,6 +232,28 @@ class _DraftReviewSheetState extends State<_DraftReviewSheet> {
               child: Text('•  $b', style: AuroraText.body.copyWith(fontSize: 12.5, height: 1.45)),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _projectBlock(ResumeProject p) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: AuroraSpacing.smd),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: Text(p.name, style: AuroraText.body.copyWith(fontSize: 13.5, fontWeight: FontWeight.w700))),
+              if (p.context.isNotEmpty) Text(p.context, style: AuroraText.bodySm.copyWith(color: AuroraColors.mistDim)),
+            ],
+          ),
+          if (p.description.isNotEmpty) ...[
+            const SizedBox(height: 3),
+            Text(p.description, style: AuroraText.body.copyWith(fontSize: 12.5, height: 1.45)),
+          ],
         ],
       ),
     );

@@ -80,6 +80,32 @@ class ResumeEducation {
       );
 }
 
+class ResumeSkillCategory {
+  ResumeSkillCategory({required this.category, required this.items});
+
+  final String category;
+  final List<String> items;
+
+  factory ResumeSkillCategory.fromJson(Map<String, dynamic> json) => ResumeSkillCategory(
+        category: json['category'] as String? ?? '',
+        items: List<String>.from(json['items'] as List? ?? const []),
+      );
+}
+
+class ResumeProject {
+  ResumeProject({required this.name, required this.context, required this.description});
+
+  final String name;
+  final String context;
+  final String description;
+
+  factory ResumeProject.fromJson(Map<String, dynamic> json) => ResumeProject(
+        name: json['name'] as String? ?? '',
+        context: json['context'] as String? ?? '',
+        description: json['description'] as String? ?? '',
+      );
+}
+
 /// A full resume rewritten for one specific job — rendered on screen and
 /// exported to PDF.
 class TailoredResume {
@@ -90,29 +116,39 @@ class TailoredResume {
     required this.summary,
     required this.skills,
     required this.experience,
+    required this.projects,
     required this.education,
+    required this.languages,
   });
 
   final String fullName;
   final String headline;
   final String contact;
   final String summary;
-  final List<String> skills;
+  final List<ResumeSkillCategory> skills;
   final List<ResumeExperience> experience;
+  final List<ResumeProject> projects;
   final List<ResumeEducation> education;
+  final List<String> languages;
 
   factory TailoredResume.fromJson(Map<String, dynamic> json) => TailoredResume(
         fullName: json['fullName'] as String? ?? '',
         headline: json['headline'] as String? ?? '',
         contact: json['contact'] as String? ?? '',
         summary: json['summary'] as String? ?? '',
-        skills: List<String>.from(json['skills'] as List? ?? const []),
+        skills: (json['skills'] as List? ?? const [])
+            .map((e) => ResumeSkillCategory.fromJson(e as Map<String, dynamic>))
+            .toList(),
         experience: (json['experience'] as List? ?? const [])
             .map((e) => ResumeExperience.fromJson(e as Map<String, dynamic>))
+            .toList(),
+        projects: (json['projects'] as List? ?? const [])
+            .map((e) => ResumeProject.fromJson(e as Map<String, dynamic>))
             .toList(),
         education: (json['education'] as List? ?? const [])
             .map((e) => ResumeEducation.fromJson(e as Map<String, dynamic>))
             .toList(),
+        languages: List<String>.from(json['languages'] as List? ?? const []),
       );
 }
 

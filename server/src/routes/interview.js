@@ -9,6 +9,12 @@ router.use(requireAuth);
 const MIN_TURNS = 5;
 const MAX_TURNS = 8;
 
+// Was 6000/4000/3000 — cut off Education and later sections on an ordinary
+// 2-page resume before the model ever saw them (confirmed: a real resume
+// this size runs ~6900 characters). The model's context window comfortably
+// fits the full thing.
+const RESUME_TEXT_LIMIT = 20000;
+
 function jobContextBlock({ jobTitle, companyName, jobDescription }) {
   if (!jobTitle && !jobDescription) return "";
   const parts = [];
@@ -38,7 +44,7 @@ router.post("/start", async (req, res) => {
     const result = await analyzeResume({
       system:
         `You are Aura, a real interviewer conducting a live mock interview inside AURA MATCH${jobTitle ? " for a specific job the candidate is applying to" : ""}. Ask ONE strong opening question grounded in the candidate's actual resume and ${jobTitle ? "this specific job posting" : "the target role"} — behavioral or role-specific, never generic ("tell me about yourself" is too weak). It must be answerable by this specific person from their real background.\n\nRespond with JSON only, matching exactly this shape:\n${START_SHAPE_EXAMPLE}`,
-      prompt: `Target role: ${targetRole}${context}\n\nResume:\n${truncateSafely(resumeText, 6000)}`,
+      prompt: `Target role: ${targetRole}${context}\n\nResume:\n${truncateSafely(resumeText, RESUME_TEXT_LIMIT)}`,
     });
     const question = typeof result?.question === "string" ? result.question.trim() : "";
     if (!question) return res.status(502).json({ error: "Could not generate an opening question." });
@@ -67,7 +73,7 @@ router.post("/next", async (req, res) => {
     const result = await analyzeResume({
       system:
         `You are Aura, a real interviewer running a live adaptive mock interview inside AURA MATCH${jobTitle ? " for a specific job the candidate is applying to" : ""}. Read the transcript so far and decide the single best next move: if the candidate's last answer was vague, generic, or lacked evidence, ask a sharper follow-up that probes the SAME topic deeper (e.g. "what was the measurable outcome?", "what would you do differently?"); otherwise move to a fresh, relevant topic (behavioral, technical/judgement for the role, a gap or stretch area, or closing motivation) not yet covered. Never repeat a question already asked. Ask ONE question at a time, never compound.${mustContinue ? " The interview must continue — do not end it yet, there have not been enough exchanges." : " If the transcript has already covered a good range of topics with solid depth and feels like a natural close, end the interview instead of forcing another question."}\n\nRespond with JSON only, matching exactly this shape (question must be empty string when done is true):\n${mustContinue ? NEXT_SHAPE_EXAMPLE : `${NEXT_SHAPE_EXAMPLE}\nor, to end the interview:\n${NEXT_DONE_SHAPE_EXAMPLE}`}`,
-      prompt: `Target role: ${targetRole}${context}\n\nResume:\n${truncateSafely(resumeText, 4000)}\n\nInterview transcript so far:\n${transcriptBlock(transcript)}`,
+      prompt: `Target role: ${targetRole}${context}\n\nResume:\n${truncateSafely(resumeText, RESUME_TEXT_LIMIT)}\n\nInterview transcript so far:\n${transcriptBlock(transcript)}`,
     });
 
     const done = mustContinue ? false : Boolean(result?.done);
@@ -103,7 +109,7 @@ router.post("/evaluate", async (req, res) => {
     const result = await analyzeResume({
       system:
         `You are Aura in Interview Simulator mode inside AURA MATCH, evaluating a mock interview${jobTitle ? " for a specific job the candidate is applying to" : ""}. Score the candidate honestly on how they actually answered — relevance to the question, specificity/evidence, structure (e.g. STAR), and confidence/clarity. Be encouraging but real: weak, vague, or evasive answers score low. Categories must be exactly Relevance, Specificity, Structure, and Confidence, in that order. Strengths and improvements must reference what the candidate genuinely said, not generic advice.\n\nRespond with JSON only, matching exactly this shape:\n${EVAL_SHAPE_EXAMPLE}`,
-      prompt: `Target role: ${targetRole}${context}\n\nResume (for context):\n${truncateSafely(resumeText, 3000)}\n\nInterview transcript:\n${transcriptBlock(answers)}`,
+      prompt: `Target role: ${targetRole}${context}\n\nResume (for context):\n${truncateSafely(resumeText, RESUME_TEXT_LIMIT)}\n\nInterview transcript:\n${transcriptBlock(answers)}`,
     });
     res.json(result);
   } catch (err) {

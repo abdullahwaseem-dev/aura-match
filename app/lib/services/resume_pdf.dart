@@ -48,10 +48,15 @@ class ResumePdf {
           _header(resume),
           if (resume.summary.isNotEmpty)
             _section('SUMMARY', pw.Text(_safe(resume.summary), style: const pw.TextStyle(fontSize: 10.5, lineSpacing: 2))),
-          if (resume.skills.isNotEmpty)
-            _section('SKILLS', pw.Text(resume.skills.map(_safe).join('   *   '), style: const pw.TextStyle(fontSize: 10.5, lineSpacing: 2))),
+          if (resume.skills.isNotEmpty) _section('SKILLS', _skills(resume.skills)),
           if (resume.experience.isNotEmpty) _section('EXPERIENCE', _experience(resume.experience)),
+          if (resume.projects.isNotEmpty) _section('PROJECTS', _projects(resume.projects)),
           if (resume.education.isNotEmpty) _section('EDUCATION', _education(resume.education)),
+          if (resume.languages.isNotEmpty)
+            _section(
+              'LANGUAGES',
+              pw.Text(resume.languages.map(_safe).join('   *   '), style: const pw.TextStyle(fontSize: 10.5, lineSpacing: 2)),
+            ),
         ],
       ),
     );
@@ -91,6 +96,60 @@ class ResumePdf {
           body,
         ],
       ),
+    );
+  }
+
+  static pw.Widget _skills(List<ResumeSkillCategory> categories) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: categories.map((c) {
+        final items = c.items.map(_safe).join(', ');
+        return pw.Padding(
+          padding: const pw.EdgeInsets.only(bottom: 4),
+          child: pw.RichText(
+            text: pw.TextSpan(
+              children: [
+                if (c.category.isNotEmpty)
+                  pw.TextSpan(
+                    text: '${_safe(c.category)}: ',
+                    style: pw.TextStyle(fontSize: 10.5, fontWeight: pw.FontWeight.bold),
+                  ),
+                pw.TextSpan(text: items, style: const pw.TextStyle(fontSize: 10.5)),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  static pw.Widget _projects(List<ResumeProject> items) {
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: items.map((p) {
+        return pw.Padding(
+          padding: const pw.EdgeInsets.only(bottom: 8),
+          child: pw.Column(
+            crossAxisAlignment: pw.CrossAxisAlignment.start,
+            children: [
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Expanded(child: pw.Text(_safe(p.name), style: pw.TextStyle(fontSize: 11, fontWeight: pw.FontWeight.bold))),
+                  if (p.context.isNotEmpty)
+                    pw.Text(_safe(p.context), style: const pw.TextStyle(fontSize: 9.5, color: PdfColors.grey600)),
+                ],
+              ),
+              if (p.description.isNotEmpty)
+                pw.Padding(
+                  padding: const pw.EdgeInsets.only(top: 2),
+                  child: pw.Text(_safe(p.description), style: const pw.TextStyle(fontSize: 10.5, lineSpacing: 1.4)),
+                ),
+            ],
+          ),
+        );
+      }).toList(),
     );
   }
 
