@@ -94,7 +94,12 @@ class _ApplicationRow extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: AuroraSpacing.xs),
-                  Text(application.job.companyName, style: AuroraText.bodySm, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(
+                    application.job.companyName.isEmpty ? 'Uploaded manually' : application.job.companyName,
+                    style: AuroraText.bodySm,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
               ),
             ),
@@ -104,6 +109,16 @@ class _ApplicationRow extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  Future<void> _updateStatus(BuildContext context, ApplicationStatus s) async {
+    try {
+      await context.read<JobsState>().updateStatus(application.id, s);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not update status: $e')));
+      }
+    }
   }
 
   void _showStatusPicker(BuildContext context) {
@@ -131,7 +146,7 @@ class _ApplicationRow extends StatelessWidget {
                 return GestureDetector(
                   onTap: () {
                     Navigator.of(sheetContext).pop();
-                    if (!active) context.read<JobsState>().updateStatus(application.id, s);
+                    if (!active) _updateStatus(context, s);
                   },
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),

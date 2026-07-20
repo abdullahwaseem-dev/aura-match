@@ -243,7 +243,8 @@ class _ChatViewState extends State<_ChatView> {
   @override
   Widget build(BuildContext context) {
     final interview = context.watch<InterviewState>();
-    final waiting = interview.currentQuestion == null;
+    final needsRetry = interview.needsEvaluationRetry;
+    final waiting = interview.currentQuestion == null && !needsRetry;
 
     return SafeArea(
       child: Column(
@@ -281,46 +282,71 @@ class _ChatViewState extends State<_ChatView> {
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    style: AuroraText.body,
-                    minLines: 1,
-                    maxLines: 4,
-                    enabled: !waiting,
-                    onSubmitted: (_) => _submit(),
-                    decoration: InputDecoration(
-                      hintText: waiting ? 'Waiting for the next question…' : 'Type your answer…',
-                      hintStyle: AuroraText.body.copyWith(color: AuroraColors.mistDim),
-                      filled: true,
-                      fillColor: Colors.white.withValues(alpha: 0.03),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AuroraRadius.control),
-                        borderSide: const BorderSide(color: AuroraColors.line),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AuroraRadius.control),
-                        borderSide: const BorderSide(color: AuroraColors.line),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AuroraRadius.control),
-                        borderSide: const BorderSide(color: AuroraColors.cyan, width: 1.5),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                AuroraButton(label: 'Send', onPressed: waiting ? null : _submit),
-              ],
+          if (interview.error != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: Text(interview.error!, style: AuroraText.bodySm.copyWith(color: AuroraColors.danger)),
             ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+            child: needsRetry ? _retryRow(context) : _inputRow(waiting),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _retryRow(BuildContext context) {
+    return AuroraButton(
+      label: 'Retry scoring',
+      icon: Icons.refresh,
+      expand: true,
+      onPressed: () {
+        final resume = context.read<ResumeState>();
+        final interview = context.read<InterviewState>();
+        interview.retryEvaluation(
+          resumeText: resume.rebuiltResume ?? resume.resumeText!,
+          targetRole: resume.targetRole.isEmpty ? (interview.jobContext?.jobTitle ?? 'this role') : resume.targetRole,
+        );
+      },
+    );
+  }
+
+  Widget _inputRow(bool waiting) {
+    return Row(
+      children: [
+        Expanded(
+          child: TextField(
+            controller: _controller,
+            style: AuroraText.body,
+            minLines: 1,
+            maxLines: 4,
+            enabled: !waiting,
+            onSubmitted: (_) => _submit(),
+            decoration: InputDecoration(
+              hintText: waiting ? 'Waiting for the next question…' : 'Type your answer…',
+              hintStyle: AuroraText.body.copyWith(color: AuroraColors.mistDim),
+              filled: true,
+              fillColor: Colors.white.withValues(alpha: 0.03),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AuroraRadius.control),
+                borderSide: const BorderSide(color: AuroraColors.line),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AuroraRadius.control),
+                borderSide: const BorderSide(color: AuroraColors.line),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(AuroraRadius.control),
+                borderSide: const BorderSide(color: AuroraColors.cyan, width: 1.5),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        AuroraButton(label: 'Send', onPressed: waiting ? null : _submit),
+      ],
     );
   }
 }

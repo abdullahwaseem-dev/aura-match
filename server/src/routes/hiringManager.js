@@ -1,7 +1,9 @@
 import { Router } from "express";
 import { analyzeResume, isConfigured } from "../groqClient.js";
+import { requireAuth } from "../middleware/requireAuth.js";
 
 const router = Router();
+router.use(requireAuth);
 
 // Groq has no schema-enforcement parameter — the shape is taught by example.
 const SCORE_SHAPE_EXAMPLE = `{

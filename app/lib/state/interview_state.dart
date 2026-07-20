@@ -26,6 +26,12 @@ class InterviewState extends ChangeNotifier {
   String? get currentQuestion => _pendingQuestion;
   int get turnNumber => transcript.length + (_pendingQuestion != null ? 1 : 0);
 
+  /// True once the interview's Q&A is done but scoring failed — there's no
+  /// pending question to fall back on, so the UI needs a distinct "retry
+  /// scoring" affordance instead of the normal answer box.
+  bool get needsEvaluationRetry =>
+      stage == InterviewStage.inProgress && _pendingQuestion == null && transcript.isNotEmpty && error != null;
+
   /// Sets the job to ground the next session in, without starting it yet —
   /// call from a job card/tracker entry, then navigate to the Prep tab so
   /// the intro screen shows this job before the user taps Start.
@@ -69,6 +75,7 @@ class InterviewState extends ChangeNotifier {
     messages.add(ChatMessage(text: answer, fromAura: false));
     transcript.add(QaAnswer(question: question, answer: answer));
     _pendingQuestion = null;
+    error = null;
     notifyListeners();
 
     try {
@@ -86,12 +93,20 @@ class InterviewState extends ChangeNotifier {
         notifyListeners();
       }
     } catch (e) {
+      // Roll back the optimistic answer and restore the question so the
+      // input box re-enables and the user can retry — without this,
+      // _pendingQuestion stays null forever and the chat soft-locks on
+      // "Aura is thinking…" with no way to recover.
+      messages.removeLast();
+      transcript.removeLast();
+      _pendingQuestion = question;
       error = e.toString();
-      // Leave the transcript intact so retrying doesn't lose progress —
-      // the last answer is recorded, just re-show the send affordance.
       notifyListeners();
     }
   }
+
+  Future<void> retryEvaluation({required String resumeText, required String targetRole}) =>
+      _evaluate(resumeText: resumeText, targetRole: targetRole);
 
   Future<void> _evaluate({required String resumeText, required String targetRole}) async {
     stage = InterviewStage.evaluating;

@@ -36,10 +36,11 @@ class ApiClient {
     return 'http://localhost:8787';
   }
 
-  // Jobs/Applications routes require a signed-in user — the server verifies
-  // this token itself (never trusts a client-supplied id) and uses it to
-  // scope every query via RLS. Resume/Hiring-Manager/Interview routes are
-  // stateless and don't need it.
+  // Every route requires a signed-in user (the app itself is auth-gated, and
+  // the server independently enforces this too — otherwise anyone who found
+  // this URL could burn through the shared Groq quota without ever opening
+  // the app). Jobs/Applications additionally use the verified token to scope
+  // queries via RLS; the rest just needs *a* valid session, any session.
   Map<String, String> get _authHeaders {
     final token = sb.Supabase.instance.client.auth.currentSession?.accessToken;
     return {if (token != null) 'Authorization': 'Bearer $token'};
@@ -62,6 +63,7 @@ class ApiClient {
   }) async {
     final uri = Uri.parse('$baseUrl/api/resume/parse');
     final request = http.MultipartRequest('POST', uri)
+      ..headers.addAll(_authHeaders)
       ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: fileName));
     final streamed = await request.send();
     final res = await http.Response.fromStream(streamed);
@@ -96,7 +98,6 @@ class ApiClient {
     final body = await _post(
       '/api/jobs/feed',
       {'resumeText': resumeText, 'targetRole': targetRole},
-      headers: _authHeaders,
     );
     return (body['matches'] as List).map((e) => JobMatch.fromJson(e as Map<String, dynamic>)).toList();
   }
@@ -109,8 +110,42 @@ class ApiClient {
     final body = await _post(
       '/api/jobs/$jobId/draft',
       {'resumeText': resumeText, 'targetRole': targetRole},
-      headers: _authHeaders,
     );
+    return (
+      ApplicationDraft.fromJson(body),
+      TrackedApplication.fromJson(body['application'] as Map<String, dynamic>),
+    );
+  }
+
+  /// Drafts a tailored resume for a job the user brought themselves — a
+  /// screenshot, a PDF, and/or a typed description — rather than one from
+  /// the live feed. At least one of [imageBytes], [pdfBytes], or [prompt]
+  /// must be provided.
+  Future<(ApplicationDraft draft, TrackedApplication application)> draftCustomJob({
+    List<int>? imageBytes,
+    String? imageFileName,
+    List<int>? pdfBytes,
+    String? pdfFileName,
+    String? prompt,
+    required String resumeText,
+    required String targetRole,
+  }) async {
+    final uri = Uri.parse('$baseUrl/api/jobs/custom');
+    final request = http.MultipartRequest('POST', uri)
+      ..headers.addAll(_authHeaders)
+      ..fields['resumeText'] = resumeText
+      ..fields['targetRole'] = targetRole;
+    if (prompt != null && prompt.trim().isNotEmpty) request.fields['prompt'] = prompt.trim();
+    if (imageBytes != null) {
+      request.files.add(http.MultipartFile.fromBytes('image', imageBytes, filename: imageFileName ?? 'job.jpg'));
+    }
+    if (pdfBytes != null) {
+      request.files.add(http.MultipartFile.fromBytes('pdf', pdfBytes, filename: pdfFileName ?? 'job.pdf'));
+    }
+
+    final streamed = await request.send().timeout(const Duration(seconds: 90));
+    final res = await http.Response.fromStream(streamed);
+    final body = _decode(res);
     return (
       ApplicationDraft.fromJson(body),
       TrackedApplication.fromJson(body['application'] as Map<String, dynamic>),
@@ -126,7 +161,7 @@ class ApiClient {
   }
 
   Future<TrackedApplication> saveJob({required String jobId}) async {
-    final body = await _post('/api/applications', {'jobId': jobId}, headers: _authHeaders);
+    final body = await _post('/api/applications', {'jobId': jobId});
     return TrackedApplication.fromJson(body['application'] as Map<String, dynamic>);
   }
 
@@ -189,15 +224,11 @@ class ApiClient {
     return InterviewResult.fromJson(body);
   }
 
-  Future<Map<String, dynamic>> _post(
-    String path,
-    Map<String, dynamic> payload, {
-    Map<String, String> headers = const {},
-  }) async {
+  Future<Map<String, dynamic>> _post(String path, Map<String, dynamic> payload) async {
     final res = await http
         .post(
           Uri.parse('$baseUrl$path'),
-          headers: {'Content-Type': 'application/json', ...headers},
+          headers: {'Content-Type': 'application/json', ..._authHeaders},
           body: jsonEncode(payload),
         )
         .timeout(const Duration(seconds: 90));

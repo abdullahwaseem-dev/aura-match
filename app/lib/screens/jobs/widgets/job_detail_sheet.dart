@@ -156,8 +156,11 @@ class _JobDetailSheetState extends State<_JobDetailSheet> {
     setState(() => _saving = true);
     try {
       await context.read<JobsState>().saveJob(widget.match.job.id);
-    } catch (_) {
-      if (mounted) setState(() => _saving = false);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not save: $e')));
+      }
     }
   }
 

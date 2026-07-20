@@ -1,6 +1,7 @@
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import multer from "multer";
 import resumeRoutes from "./routes/resume.js";
 import hiringManagerRoutes from "./routes/hiringManager.js";
 import jobsRoutes from "./routes/jobs.js";
@@ -26,6 +27,10 @@ app.use("/api/applications", applicationsRoutes);
 app.use("/api/interview", interviewRoutes);
 
 app.use((err, _req, res, _next) => {
+  if (err instanceof multer.MulterError) {
+    const message = err.code === "LIMIT_FILE_SIZE" ? "That file is too large (10MB max)." : err.message;
+    return res.status(413).json({ error: message });
+  }
   console.error(err);
   res.status(500).json({ error: "Unexpected server error." });
 });

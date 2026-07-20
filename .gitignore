@@ -8,6 +8,9 @@
 node_modules/
 npm-debug.log*
 
+# Tesseract OCR language data — downloaded/cached at runtime, not source.
+*.traineddata
+
 # OS cruft
 .DS_Store
 Thumbs.db

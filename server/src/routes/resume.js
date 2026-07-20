@@ -2,9 +2,14 @@ import { Router } from "express";
 import multer from "multer";
 import { extractText } from "../lib/parseFile.js";
 import { analyzeResume, isConfigured } from "../groqClient.js";
+import { requireAuth } from "../middleware/requireAuth.js";
 
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 const router = Router();
+// The whole app requires sign-in to reach any screen — gate the API the
+// same way, or anyone who finds this URL can burn through the shared Groq
+// quota without ever opening the app.
+router.use(requireAuth);
 
 router.post("/parse", upload.single("file"), async (req, res) => {
   if (!req.file) {

@@ -67,7 +67,7 @@ class _DraftReviewSheetState extends State<_DraftReviewSheet> {
             ),
             Text('TAILORED RESUME · REVIEW', style: AuroraText.caption.copyWith(color: AuroraColors.violetSoft)),
             const SizedBox(height: AuroraSpacing.sm),
-            Text('${job.title} at ${job.companyName}', style: AuroraText.displayM),
+            Text(job.companyName.isEmpty ? job.title : '${job.title} at ${job.companyName}', style: AuroraText.displayM),
             const SizedBox(height: AuroraSpacing.md),
             GlassContainer(
               borderColor: AuroraColors.amber.withValues(alpha: 0.25),
@@ -145,14 +145,16 @@ class _DraftReviewSheetState extends State<_DraftReviewSheet> {
             const SizedBox(height: AuroraSpacing.lg),
             _Section(title: 'Cover note', body: widget.draft.coverNote),
             const SizedBox(height: AuroraSpacing.xl),
-            AuroraButton(
-              label: 'Open posting & apply',
-              icon: Icons.open_in_new,
-              variant: AuroraButtonVariant.secondary,
-              expand: true,
-              onPressed: () => _openPosting(job.applyUrl),
-            ),
-            const SizedBox(height: AuroraSpacing.md),
+            if (job.applyUrl.isNotEmpty) ...[
+              AuroraButton(
+                label: 'Open posting & apply',
+                icon: Icons.open_in_new,
+                variant: AuroraButtonVariant.secondary,
+                expand: true,
+                onPressed: () => _openPosting(job.applyUrl),
+              ),
+              const SizedBox(height: AuroraSpacing.md),
+            ],
             AuroraButton(
               label: _markingApplied ? 'Marking…' : "I've applied — mark it",
               variant: AuroraButtonVariant.ghost,

@@ -1,8 +1,10 @@
 import { Router } from "express";
 import { analyzeResume, isConfigured } from "../groqClient.js";
 import { truncateSafely } from "../lib/arbeitnow.js";
+import { requireAuth } from "../middleware/requireAuth.js";
 
 const router = Router();
+router.use(requireAuth);
 
 const MIN_TURNS = 5;
 const MAX_TURNS = 8;

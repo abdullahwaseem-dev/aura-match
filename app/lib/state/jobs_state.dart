@@ -62,6 +62,29 @@ class JobsState extends ChangeNotifier {
     return (draft, application);
   }
 
+  Future<(ApplicationDraft, TrackedApplication)> draftCustomJob({
+    List<int>? imageBytes,
+    String? imageFileName,
+    List<int>? pdfBytes,
+    String? pdfFileName,
+    String? prompt,
+    required String resumeText,
+    required String targetRole,
+  }) async {
+    final (draft, application) = await _api.draftCustomJob(
+      imageBytes: imageBytes,
+      imageFileName: imageFileName,
+      pdfBytes: pdfBytes,
+      pdfFileName: pdfFileName,
+      prompt: prompt,
+      resumeText: resumeText,
+      targetRole: targetRole,
+    );
+    _upsertApplication(application);
+    notifyListeners();
+    return (draft, application);
+  }
+
   Future<void> updateStatus(String applicationId, ApplicationStatus status) async {
     final application = await _api.updateApplicationStatus(applicationId: applicationId, status: status);
     _upsertApplication(application);

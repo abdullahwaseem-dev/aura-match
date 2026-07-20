@@ -75,41 +75,60 @@ class _QaChatViewState extends State<QaChatView> {
                   .toList(),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    style: AuroraText.body,
-                    onSubmitted: (_) => _submit(state),
-                    decoration: InputDecoration(
-                      hintText: 'Type your answer…',
-                      hintStyle: AuroraText.body.copyWith(color: AuroraColors.mistDim),
-                      filled: true,
-                      fillColor: Colors.white.withValues(alpha: 0.03),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AuroraRadius.control),
-                        borderSide: const BorderSide(color: AuroraColors.line),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AuroraRadius.control),
-                        borderSide: const BorderSide(color: AuroraColors.line),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(AuroraRadius.control),
-                        borderSide: const BorderSide(color: AuroraColors.cyan, width: 1.5),
+          // All questions answered but the rebuild call itself failed —
+          // there's no current question left to submit against, so the
+          // normal input would silently no-op forever. Show a retry
+          // affordance instead.
+          if (!state.hasNextQuestion && state.error != null) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: Text(state.error!, style: AuroraText.bodySm.copyWith(color: AuroraColors.danger)),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              child: AuroraButton(
+                label: state.loading ? 'Retrying…' : 'Retry',
+                icon: Icons.refresh,
+                expand: true,
+                onPressed: state.loading ? null : () => context.read<ResumeState>().rebuild(),
+              ),
+            ),
+          ] else
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _controller,
+                      style: AuroraText.body,
+                      onSubmitted: (_) => _submit(state),
+                      decoration: InputDecoration(
+                        hintText: 'Type your answer…',
+                        hintStyle: AuroraText.body.copyWith(color: AuroraColors.mistDim),
+                        filled: true,
+                        fillColor: Colors.white.withValues(alpha: 0.03),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AuroraRadius.control),
+                          borderSide: const BorderSide(color: AuroraColors.line),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AuroraRadius.control),
+                          borderSide: const BorderSide(color: AuroraColors.line),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AuroraRadius.control),
+                          borderSide: const BorderSide(color: AuroraColors.cyan, width: 1.5),
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                AuroraButton(label: 'Send', onPressed: () => _submit(state)),
-              ],
+                  const SizedBox(width: 10),
+                  AuroraButton(label: 'Send', onPressed: () => _submit(state)),
+                ],
+              ),
             ),
-          ),
         ],
       ),
     );

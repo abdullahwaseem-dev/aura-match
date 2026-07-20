@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../theme/aurora.dart';
+import 'custom_job_screen.dart';
 import 'widgets/match_feed_view.dart';
 import 'widgets/tracker_view.dart';
 
@@ -28,7 +29,17 @@ class _JobsFlowScreenState extends State<JobsFlowScreen> {
                 const SizedBox(height: AuroraSpacing.sm),
                 Text(_tab == 0 ? 'Match Feed' : 'Application Tracker', style: AuroraText.displayM),
                 const SizedBox(height: AuroraSpacing.lg),
-                _SegmentedHeader(index: _tab, onChanged: (i) => setState(() => _tab = i)),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _SegmentedHeader(index: _tab, onChanged: (i) => setState(() => _tab = i)),
+                    _AddJobButton(
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const CustomJobScreen()),
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
@@ -42,6 +53,29 @@ class _JobsFlowScreenState extends State<JobsFlowScreen> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _AddJobButton extends StatelessWidget {
+  const _AddJobButton({required this.onTap});
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 40,
+        height: 40,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(AuroraRadius.pill),
+          border: Border.all(color: AuroraColors.line),
+        ),
+        child: const Icon(Icons.add, size: 20, color: AuroraColors.cyanSoft),
       ),
     );
   }
